@@ -74,4 +74,43 @@ describe("crypto-mapp", () => {
     );
     expect(merchantAccount.arweaveId).to.equal(arweaveId);
   });
+
+  it("Fails to create a merchant with unauthorized user", async () => {
+    const unauthorizedKeypair = anchor.web3.Keypair.generate(); // Simulating an unauthorized user
+    const stateKeypair = anchor.web3.Keypair.generate();
+    const merchantKeypair = anchor.web3.Keypair.generate();
+    const arweaveId = "some_arweave_id_here";
+
+    // Initialize the state with the rightful owner first
+    await program.methods
+      .initialize()
+      .accounts({
+        state: stateKeypair.publicKey,
+        user: provider.wallet.publicKey, // The rightful owner
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([stateKeypair])
+      .rpc();
+
+    try {
+      // Attempt to create a merchant with an unauthorized user
+      await program.methods
+        .createMerchant(arweaveId)
+        .accounts({
+          merchant: merchantKeypair.publicKey,
+          user: unauthorizedKeypair.publicKey, // Unauthorized user
+          payer: unauthorizedKeypair.publicKey, // Unauthorized user acting as payer
+          state: stateKeypair.publicKey, // Initialized state account
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([unauthorizedKeypair, merchantKeypair])
+        .rpc();
+
+      throw new Error("Unauthorized creation did not fail as expected");
+    } catch (err) {
+      // Check that the error is the expected one
+      const errMsg = err.toString();
+      expect(errMsg).to.include("custom program error: 0x1");
+    }
+  });
 });
