@@ -1,56 +1,63 @@
-# CryptoMapp Solana
+# CryptoMapp
 
-This project is a blockchain application built on the Solana platform. It uses Rust for writing the blockchain application or smart contract and TypeScript for the frontend or client-side code.
+CryptoMapp is a decentralized application built on the Solana blockchain, focused on providing a platform for users to become merchants in a Latin America-based marketplace. Merchants are represented by NFTs and hold data on Arweave. The platform allows for discovering merchants on a map and integrating a payment system.
 
-## Overview
+## Features
 
-The main purpose of this project is to develop a Solana blockchain application or smart contract. The project is organized into several directories, each serving a specific purpose:
-
-`app:` Contains the frontend or client-side code for the project.
-`migrations:` Contains a deploy.ts file, suggesting that this project may involve database migrations or deployment scripts.
-`programs:` Contains the main Rust code for the Solana smart contract. It has its own Cargo.toml and Xargo.toml files, indicating that it is a separate Rust project within the main project.
-`target:` Contains build artifacts and dependencies for the Rust code.
-`tests:` Likely contains test files for the project.
-`types:` Contains TypeScript type definitions for the Solana smart contract.
-Other directories like deploy, idl, and release contain various files related to deployment, interface definition, and release artifacts.
+- **Become a Merchant**: Users can register to become merchants, represented by NFTs.
+- **Discover Merchants**: Users can discover merchant services on a map interface.
+- **Payment Integration**: The platform includes a payment system with a minor fee structure.
 
 ## Getting Started
 
-To get started with this project, clone the repository and install the necessary dependencies. You'll need to have Rust and Node.js installed on your machine.
+### Prerequisites
 
-```
-git clone https://github.com/cryptomapp/solana.git
-cd solana
-yarn install
-```
+- Install [Node.js](https://nodejs.org/en/)
+- Install [Rust](https://www.rust-lang.org/tools/install)
+- Install [Solana Tool Suite](https://docs.solana.com/cli/install-solana-cli-tools)
+- Install [Anchor Framework](https://project-serum.github.io/anchor/getting-started/installation.html)
 
-### Building and Running the Application
+### Installation
 
-To build and run the application, use the following commands:
+1. Clone the repository:
 
-```
-anchor build
-yarn start
-```
+   ```
+   git clone https://github.com/yourGithub/CryptoMapp.git
+   ```
 
-### Testing
+2. Navigate to the project directory:
 
-To run tests, use the following command:
+   ```
+   cd CryptoMapp
+   ```
 
-```
-anchor test
-```
+3. Install packages with yarn:
 
-### Deployment
+   ```
+    yarn install
+   ```
 
-For deployment instructions, please refer to the deploy.ts script in the migrations directory.
+4. Build the Anchor project:
 
-Contributing
-Contributions are welcome! Please read the contributing guidelines before getting started.
+   ```
+   anchor build
+   ```
 
-License
-This project is licensed under the terms of the MIT license.
+5. Test the project:
 
-```
+   ```
+   anchor test
+   ```
 
-```
+### Usage
+
+- **Initialize the Program**: Deploy and initialize the program with the owner's wallet.
+- **Become a Merchant**: Use the dApp interface to submit a transaction and become a merchant.
+
+### Development
+
+Describe the steps for local development, including how to:
+
+- Compile the program
+- Deploy to local/testnet/mainnet
+- Run tests
