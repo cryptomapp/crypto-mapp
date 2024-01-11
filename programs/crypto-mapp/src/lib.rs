@@ -7,41 +7,69 @@ pub mod crypto_mapp {
     use anchor_lang::solana_program::entrypoint::ProgramResult;
 
     use super::*;
-    // Define program methods here
 
-    pub fn initialize(ctx: Context<Initialize>) -> ProgramResult {
-        // Initialization logic here
+    // Initialize a new user with EXP points
+    pub fn initialize_user(
+        ctx: Context<InitializeUser>,
+        referrer: Option<Pubkey>,
+    ) -> ProgramResult {
+        let user_exp_account = &mut ctx.accounts.user_exp;
+
+        if user_exp_account.exp_points == 0 && user_exp_account.is_new {
+            user_exp_account.exp_points = 100; // Starting EXP points
+            user_exp_account.is_new = false;
+
+            if let Some(referrer_pubkey) = referrer {
+                if referrer_pubkey != ctx.accounts.user.key() {
+                    if ctx.accounts.referrer_exp.is_some() {
+                        let referrer_exp_account = &mut ctx.accounts.referrer_exp.clone().unwrap();
+                        referrer_exp_account.exp_points += 50; // Bonus EXP for the referrer
+                        user_exp_account.exp_points += 50; // Bonus EXP for the user
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 
-    // You can add more functions here as needed
+    // Function to get a user's EXP
+    pub fn get_user_exp(ctx: Context<GetUserExp>) -> ProgramResult {
+        let user_exp_account = &ctx.accounts.user_exp;
+        msg!("User EXP: {}", user_exp_account.exp_points);
+        Ok(())
+    }
 }
 
-// Define the context for the Initialize function
+// Define the context for initializing a user
 #[derive(Accounts)]
-pub struct Initialize<'info> {
-    // Define accounts needed for initialization
-    #[account(init, payer = user, space = 8 + 32)] // Adjust space as needed
-    pub state: Account<'info, ProgramState>,
+pub struct InitializeUser<'info> {
+    #[account(init, payer = user, space = 8 + 32 + 1 + 4)]
+    pub user_exp: Account<'info, UserExp>,
     #[account(mut)]
     pub user: Signer<'info>,
+    #[account(mut)]
+    pub referrer_exp: Option<Account<'info, UserExp>>,
     pub system_program: Program<'info, System>,
 }
 
-// Define the state of the program
+// Define the context for getting a user's EXP
+#[derive(Accounts)]
+pub struct GetUserExp<'info> {
+    #[account(mut)]
+    pub user_exp: Account<'info, UserExp>,
+}
+
+// Define the UserExp account structure
 #[account]
-pub struct ProgramState {
-    // Add state variables here
-    // Example: owner of the program
-    pub owner: Pubkey,
-    // Add other state variables as needed
+pub struct UserExp {
+    pub exp_points: u32,
+    pub is_new: bool,
 }
 
 // Define error codes for the program
 #[error_code]
 pub enum ErrorCode {
-    // Define custom error codes
-    // Example: Unauthorized action
     #[msg("Unauthorized action.")]
     Unauthorized,
 }

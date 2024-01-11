@@ -4,113 +4,67 @@ import { CryptoMapp } from "../target/types/crypto_mapp";
 import { expect } from "chai";
 
 describe("crypto-mapp", () => {
-  // Configure the client to use the local cluster.
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
   const program = anchor.workspace.CryptoMapp as Program<CryptoMapp>;
 
-  it("Initializes program state with owner", async () => {
-    // Generate a new keypair for the state account
-    const stateKeypair = anchor.web3.Keypair.generate();
+  it("Initializes and gets EXP for a new user without a referrer", async () => {
+    const userExpKeypair = anchor.web3.Keypair.generate();
 
-    // Call the initialize function
     await program.methods
-      .initialize()
+      .initializeUser(null)
       .accounts({
-        state: stateKeypair.publicKey,
-        user: provider.wallet.publicKey, // The wallet initializing (and thus owning) the program
-        systemProgram: anchor.web3.SystemProgram.programId,
-      })
-      .signers([stateKeypair])
-      .rpc();
-
-    // Fetch and check the initialized state
-    const stateAccount = await program.account.programState.fetch(
-      stateKeypair.publicKey
-    );
-    expect(stateAccount.owner.toBase58()).to.equal(
-      provider.wallet.publicKey.toBase58()
-    );
-  });
-
-  it("Can create a merchant by the owner", async () => {
-    // Assuming stateKeypair is the same as used in initialization
-    const stateKeypair = anchor.web3.Keypair.generate();
-    const merchantKeypair = anchor.web3.Keypair.generate();
-    const arweaveId = "some_arweave_id_here";
-
-    // Initialize the state with the owner first
-    await program.methods
-      .initialize()
-      .accounts({
-        state: stateKeypair.publicKey,
+        userExp: userExpKeypair.publicKey,
         user: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([stateKeypair]) // Signer for initializing state
+      .signers([userExpKeypair])
       .rpc();
 
-    // Call the 'createMerchant' function from the program
+    const userExpAccount = await program.account.userExp.fetch(
+      userExpKeypair.publicKey
+    );
+    expect(userExpAccount.expPoints).to.equal(100);
+    expect(userExpAccount.isNew).to.be.false;
+  });
+
+  it("Initializes and gets EXP for a new user with a referrer", async () => {
+    const userExpKeypair = anchor.web3.Keypair.generate();
+    const referrerExpKeypair = anchor.web3.Keypair.generate();
+
+    // Initialize the referrer's EXP account
     await program.methods
-      .createMerchant(arweaveId)
+      .initializeUser(null)
       .accounts({
-        merchant: merchantKeypair.publicKey,
+        userExp: referrerExpKeypair.publicKey,
         user: provider.wallet.publicKey,
-        payer: provider.wallet.publicKey, // Owner's wallet pays for transaction
-        state: stateKeypair.publicKey, // Initialized state account
+        referrerExp: anchor.web3.SystemProgram.programId, // Placeholder for no referrer
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([merchantKeypair]) // Signer for creating merchant
+      .signers([referrerExpKeypair])
       .rpc();
 
-    // Fetch the newly created merchant account
-    const merchantAccount = await program.account.merchant.fetch(
-      merchantKeypair.publicKey
-    );
-
-    // Assertions
-    expect(merchantAccount.owner.toBase58()).to.equal(
-      provider.wallet.publicKey.toBase58()
-    );
-    expect(merchantAccount.arweaveId).to.equal(arweaveId);
-  });
-
-  it("Fails to create a merchant with unauthorized user", async () => {
-    const unauthorizedKeypair = anchor.web3.Keypair.generate(); // Simulating an unauthorized user
-    const stateKeypair = anchor.web3.Keypair.generate();
-    const merchantKeypair = anchor.web3.Keypair.generate();
-    const arweaveId = "some_arweave_id_here";
-
-    // Initialize the state with the rightful owner first
+    // Initialize the new user with a referrer
     await program.methods
-      .initialize()
+      .initializeUser(referrerExpKeypair.publicKey)
       .accounts({
-        state: stateKeypair.publicKey,
-        user: provider.wallet.publicKey, // The rightful owner
+        userExp: userExpKeypair.publicKey,
+        user: provider.wallet.publicKey,
+        referrerExp: referrerExpKeypair.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([stateKeypair])
+      .signers([userExpKeypair])
       .rpc();
 
-    try {
-      // Attempt to create a merchant with an unauthorized user
-      await program.methods
-        .createMerchant(arweaveId)
-        .accounts({
-          merchant: merchantKeypair.publicKey,
-          user: unauthorizedKeypair.publicKey, // Unauthorized user
-          payer: unauthorizedKeypair.publicKey, // Unauthorized user acting as payer
-          state: stateKeypair.publicKey, // Initialized state account
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
-        .signers([unauthorizedKeypair, merchantKeypair])
-        .rpc();
-
-      throw new Error("Unauthorized creation did not fail as expected");
-    } catch (err) {
-      // Check that the error is the expected one
-      const errMsg = err.toString();
-      expect(errMsg).to.include("custom program error: 0x1");
-    }
+    const userExpAccount = await program.account.userExp.fetch(
+      userExpKeypair.publicKey
+    );
+    const referrerExpAccount = await program.account.userExp.fetch(
+      referrerExpKeypair.publicKey
+    );
+    expect(userExpAccount.expPoints).to.equal(150); // User + referrer bonus
+    expect(referrerExpAccount.expPoints).to.equal(50); // Referrer bonus
   });
+
+  // Additional tests as necessary
 });
