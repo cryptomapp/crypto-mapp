@@ -34,7 +34,7 @@ CryptoMapp is a decentralized application built on the Solana blockchain, focuse
 3. Install packages with yarn:
 
    ```
-    yarn install
+   yarn install
    ```
 
 4. Build the Anchor project:
