@@ -63,10 +63,10 @@ describe("crypto_mapp", () => {
         .checkUserExists()
         .accounts({ userExp: userExpPda })
         .rpc();
-      console.log("User exists (before initialization).");
+      console.log("User exists (before initialization).\n");
     } catch (error) {
       console.log(
-        "User does not exist (before initialization).",
+        "User does not exist (before initialization).\n",
         error.toString()
       );
     }
@@ -88,12 +88,77 @@ describe("crypto_mapp", () => {
         .checkUserExists()
         .accounts({ userExp: userExpPda })
         .rpc();
-      console.log("User exists (after initialization).");
+      console.log("User exists (after initialization).\n");
     } catch (error) {
       console.log(
-        "User does not exist (after initialization).",
+        "User does not exist (after initialization).\n",
         error.toString()
       );
     }
+  });
+
+  it("Initializes a new user with a referrer", async () => {
+    const newUser = anchor.web3.Keypair.generate();
+    const referrer = anchor.web3.Keypair.generate();
+
+    // Fund both accounts with some SOL
+    const airdropSignature1 = await provider.connection.requestAirdrop(
+      newUser.publicKey,
+      LAMPORTS_PER_SOL
+    );
+    const airdropSignature2 = await provider.connection.requestAirdrop(
+      referrer.publicKey,
+      LAMPORTS_PER_SOL
+    );
+
+    await provider.connection.confirmTransaction(airdropSignature1);
+    await provider.connection.confirmTransaction(airdropSignature2);
+
+    // Calculate the PDAs for both the new user and the referrer
+    const [newUserExpPda, _newUserBump] = PublicKey.findProgramAddressSync(
+      [newUser.publicKey.toBuffer()],
+      program.programId
+    );
+    const [referrerExpPda, _referrerBump] = PublicKey.findProgramAddressSync(
+      [referrer.publicKey.toBuffer()],
+      program.programId
+    );
+
+    // Initialize the referrer
+    await program.methods
+      .initializeUser()
+      .accounts({
+        userExp: referrerExpPda,
+        user: referrer.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([referrer])
+      .rpc();
+
+    // Initialize the new user with the referrer
+    await program.methods
+      .initializeUserWithReferrer()
+      .accounts({
+        userExp: newUserExpPda,
+        user: newUser.publicKey,
+        referrerExp: referrerExpPda,
+        referrer: referrer.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([newUser])
+      .rpc();
+
+    // Fetch and log the initialized account data for both users
+    const newUserAccount = await program.account.userExp.fetch(newUserExpPda);
+    const referrerAccount = await program.account.userExp.fetch(referrerExpPda);
+
+    console.log(
+      "New User EXP Points after initialization:",
+      newUserAccount.expPoints
+    );
+    console.log(
+      "Referrer EXP Points after new user initialization:",
+      referrerAccount.expPoints
+    );
   });
 });
