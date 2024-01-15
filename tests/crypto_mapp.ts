@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { CryptoMapp } from "../target/types/crypto_mapp"; // Adjust the import path as needed
+import { CryptoMapp } from "../target/types/crypto_mapp";
 
 describe("crypto_mapp", () => {
   const provider = anchor.AnchorProvider.env();
@@ -11,19 +11,26 @@ describe("crypto_mapp", () => {
     const user = anchor.web3.Keypair.generate();
 
     // Fund the user account with some SOL
-    await provider.connection.confirmTransaction(
-      await provider.connection.requestAirdrop(
-        user.publicKey,
-        LAMPORTS_PER_SOL
-      ),
-      "confirmed"
+    const airdropSignature = await provider.connection.requestAirdrop(
+      user.publicKey,
+      LAMPORTS_PER_SOL // 1 SOL
     );
+
+    await provider.connection.confirmTransaction(airdropSignature);
 
     // Calculate the PDA for the user_exp account
     const [userExpPda, _bump] = PublicKey.findProgramAddressSync(
       [user.publicKey.toBuffer()],
       program.programId
     );
+
+    // Check if the user exists before initialization
+    try {
+      await program.account.userExp.fetch(userExpPda);
+      console.log("User already exists (before initialization).");
+    } catch (error) {
+      console.log("User does not exist (before initialization).");
+    }
 
     // Initialize the user
     await program.methods
@@ -35,6 +42,13 @@ describe("crypto_mapp", () => {
       })
       .signers([user])
       .rpc();
+
+    try {
+      await program.account.userExp.fetch(userExpPda);
+      console.log("User already exists (after initialization).");
+    } catch (error) {
+      console.log("User does not exist (after initialization).");
+    }
 
     // Fetch and log the initialized account data
     const userAccount = await program.account.userExp.fetch(userExpPda);
