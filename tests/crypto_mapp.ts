@@ -13,7 +13,7 @@ describe("crypto_mapp", () => {
     // Fund the user account with some SOL
     const airdropSignature = await provider.connection.requestAirdrop(
       user.publicKey,
-      LAMPORTS_PER_SOL // 1 SOL
+      LAMPORTS_PER_SOL
     );
 
     await provider.connection.confirmTransaction(airdropSignature);
@@ -24,12 +24,51 @@ describe("crypto_mapp", () => {
       program.programId
     );
 
-    // Check if the user exists before initialization
+    // Initialize the user
+    await program.methods
+      .initializeUser()
+      .accounts({
+        userExp: userExpPda,
+        user: user.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([user])
+      .rpc();
+
+    // Fetch and log the initialized account data
+    const userAccount = await program.account.userExp.fetch(userExpPda);
+    console.log("User EXP Points after initialization:", userAccount.expPoints);
+  });
+
+  it("Checks if a user exists", async () => {
+    const user = anchor.web3.Keypair.generate();
+
+    // Fund the user account with some SOL
+    const airdropSignature = await provider.connection.requestAirdrop(
+      user.publicKey,
+      LAMPORTS_PER_SOL
+    );
+
+    await provider.connection.confirmTransaction(airdropSignature);
+
+    // Calculate the PDA for the user_exp account
+    const [userExpPda, _bump] = PublicKey.findProgramAddressSync(
+      [user.publicKey.toBuffer()],
+      program.programId
+    );
+
+    // Check if the user exists (should not exist yet)
     try {
-      await program.account.userExp.fetch(userExpPda);
-      console.log("User already exists (before initialization).");
+      await program.methods
+        .checkUserExists()
+        .accounts({ userExp: userExpPda })
+        .rpc();
+      console.log("User exists (before initialization).");
     } catch (error) {
-      console.log("User does not exist (before initialization).");
+      console.log(
+        "User does not exist (before initialization).",
+        error.toString()
+      );
     }
 
     // Initialize the user
@@ -43,15 +82,18 @@ describe("crypto_mapp", () => {
       .signers([user])
       .rpc();
 
+    // Check if the user exists (should exist now)
     try {
-      await program.account.userExp.fetch(userExpPda);
-      console.log("User already exists (after initialization).");
+      await program.methods
+        .checkUserExists()
+        .accounts({ userExp: userExpPda })
+        .rpc();
+      console.log("User exists (after initialization).");
     } catch (error) {
-      console.log("User does not exist (after initialization).");
+      console.log(
+        "User does not exist (after initialization).",
+        error.toString()
+      );
     }
-
-    // Fetch and log the initialized account data
-    const userAccount = await program.account.userExp.fetch(userExpPda);
-    console.log("User EXP Points:", userAccount.expPoints);
   });
 });

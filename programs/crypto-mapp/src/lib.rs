@@ -15,9 +15,12 @@ pub mod crypto_mapp {
     }
 
     // Function to check if a user exists
-    pub fn check_user_exists(ctx: Context<GetUserExp>) -> ProgramResult {
-        let user_exp_account = &ctx.accounts.user_exp;
-        msg!("User EXP Points: {}", user_exp_account.exp_points);
+    pub fn check_user_exists(ctx: Context<CheckUserExists>) -> Result<()> {
+        require!(
+            ctx.accounts.user_exp.to_account_info().lamports() > 0,
+            ErrorCode::UserDoesNotExist
+        );
+        msg!("User exists");
         Ok(())
     }
 }
@@ -32,9 +35,9 @@ pub struct InitializeUser<'info> {
     pub system_program: Program<'info, System>,
 }
 
-// Define the context for getting a user's EXP
+// Define the context for checking if a user exists
 #[derive(Accounts)]
-pub struct GetUserExp<'info> {
+pub struct CheckUserExists<'info> {
     #[account(mut)]
     pub user_exp: Account<'info, UserExp>,
 }
@@ -43,4 +46,10 @@ pub struct GetUserExp<'info> {
 #[account]
 pub struct UserExp {
     pub exp_points: u32,
+}
+
+#[error_code]
+pub enum ErrorCode {
+    #[msg("The specified user does not exist.")]
+    UserDoesNotExist,
 }
