@@ -214,6 +214,7 @@ describe("crypto_mapp", () => {
       );
     }
   });
+
   it("Fails to initialize a user with an invalid referrer", async () => {
     // Generate an invalid referrer (random keypair)
     const invalidReferrer = anchor.web3.Keypair.generate();
@@ -237,6 +238,59 @@ describe("crypto_mapp", () => {
     } catch (error) {
       console.log(
         "Failed to initialize user with an invalid referrer as expected.",
+        error.toString()
+      );
+    }
+  });
+
+  it("Successfully mints EXP for an existing user", async () => {
+    // Initialize the user first
+    await program.methods
+      .initializeUser()
+      .accounts({
+        userExp: newUserExpPda,
+        user: newUser.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([newUser])
+      .rpc();
+
+    // Mint EXP for the user
+    await program.methods
+      .mintExpForMerchant()
+      .accounts({ userExp: newUserExpPda })
+      .rpc();
+
+    // Fetch and verify the updated account data
+    const userAccount = await program.account.userExp.fetch(newUserExpPda);
+    console.log(
+      "User EXP Points after minting for merchant:",
+      userAccount.expPoints
+    );
+    assert.equal(
+      userAccount.expPoints,
+      200,
+      "User EXP points should be 200 after minting for merchant"
+    );
+  });
+
+  it("Fails to mint EXP for a non-existing user", async () => {
+    const nonExistingUser = anchor.web3.Keypair.generate();
+    const [nonExistingUserExpPda, _] = PublicKey.findProgramAddressSync(
+      [nonExistingUser.publicKey.toBuffer()],
+      program.programId
+    );
+
+    // Attempt to mint EXP for a non-existing user
+    try {
+      await program.methods
+        .mintExpForMerchant()
+        .accounts({ userExp: nonExistingUserExpPda })
+        .rpc();
+      assert.fail("Minting EXP should have failed for a non-existing user.");
+    } catch (error) {
+      console.log(
+        "Failed to mint EXP for a non-existing user as expected.",
         error.toString()
       );
     }
