@@ -75,6 +75,19 @@ pub mod crypto_mapp {
 
     // Function to execute a transaction
     pub fn execute_transaction(ctx: Context<ExecuteTransaction>, amount: u64) -> ProgramResult {
+        // Minimum transaction amount set to 0.01 USDC (10,000 micro-units)
+        const MIN_TRANSACTION_AMOUNT: u64 = 10_000;
+
+        // Check if the transaction amount is above the minimum threshold
+        if amount < MIN_TRANSACTION_AMOUNT {
+            return Err(ErrorCode::TransactionAmountTooLow.into());
+        }
+
+        // Check if the sender has sufficient funds
+        if ctx.accounts.sender_usdc_account.amount < amount {
+            return Err(ErrorCode::InsufficientFunds.into());
+        }
+
         let fee = amount * 3 / 1000; // 0.3% fee
         let transfer_amount = amount - fee;
 
@@ -167,4 +180,8 @@ pub enum ErrorCode {
     UserAlreadyExists,
     #[msg("The specified referrer does not exist.")]
     ReferrerDoesNotExist,
+    #[msg("Transaction amount is too low.")]
+    TransactionAmountTooLow,
+    #[msg("Insufficient funds for the transaction.")]
+    InsufficientFunds,
 }
