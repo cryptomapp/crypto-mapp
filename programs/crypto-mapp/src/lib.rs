@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program_error::ProgramError;
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 declare_id!("2fN9ZMRnTB3MHi3oT3HFJcReY7jTJDDhoQNFKrbTKTTe");
 
@@ -13,6 +14,7 @@ impl From<ErrorCode> for ProgramError {
 pub mod crypto_mapp {
     use super::*;
     use anchor_lang::solana_program::entrypoint::ProgramResult;
+    use anchor_spl::token::{self, Transfer};
 
     // Function to initialize a new user
     pub fn initialize_user(ctx: Context<InitializeUser>) -> ProgramResult {
@@ -70,6 +72,38 @@ pub mod crypto_mapp {
         msg!("100 EXP minted for becoming a merchant");
         Ok(())
     }
+
+    // Function to execute a transaction
+    pub fn execute_transaction(ctx: Context<ExecuteTransaction>, amount: u64) -> ProgramResult {
+        let fee = amount * 3 / 1000; // 0.3% fee
+        let transfer_amount = amount - fee;
+
+        // Transfer USDC to the recipient
+        let transfer_to_receiver_cpi_accounts = Transfer {
+            from: ctx.accounts.sender_usdc_account.to_account_info(),
+            to: ctx.accounts.receiver_usdc_account.to_account_info(),
+            authority: ctx.accounts.sender.to_account_info(),
+        };
+        let transfer_to_receiver_cpi_ctx = CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            transfer_to_receiver_cpi_accounts,
+        );
+        token::transfer(transfer_to_receiver_cpi_ctx, transfer_amount)?;
+
+        // Transfer fee to the DAO
+        let transfer_to_dao_cpi_accounts = Transfer {
+            from: ctx.accounts.sender_usdc_account.to_account_info(),
+            to: ctx.accounts.dao_usdc_account.to_account_info(),
+            authority: ctx.accounts.sender.to_account_info(),
+        };
+        let transfer_to_dao_cpi_ctx = CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            transfer_to_dao_cpi_accounts,
+        );
+        token::transfer(transfer_to_dao_cpi_ctx, fee)?;
+
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -109,6 +143,20 @@ pub struct MintExpForMerchant<'info> {
 #[account]
 pub struct UserExp {
     pub exp_points: u32,
+}
+
+#[derive(Accounts)]
+pub struct ExecuteTransaction<'info> {
+    #[account(mut)]
+    pub sender: Signer<'info>,
+    #[account(mut)]
+    pub sender_usdc_account: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub receiver_usdc_account: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub dao_usdc_account: Account<'info, TokenAccount>,
+    pub usdc_mint: Account<'info, Mint>,
+    pub token_program: Program<'info, Token>,
 }
 
 #[error_code]
