@@ -4,6 +4,8 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 
 declare_id!("2fN9ZMRnTB3MHi3oT3HFJcReY7jTJDDhoQNFKrbTKTTe");
 
+const DAO_PUBKEY: &str = "HyZWBzi5EH9mm7FFhpAHQArm5JyY1KPeWgSxMN6YZdJy";
+
 impl From<ErrorCode> for ProgramError {
     fn from(e: ErrorCode) -> ProgramError {
         ProgramError::Custom(e as u32)
@@ -12,6 +14,8 @@ impl From<ErrorCode> for ProgramError {
 
 #[program]
 pub mod crypto_mapp {
+    use std::str::FromStr;
+
     use super::*;
     use anchor_lang::solana_program::entrypoint::ProgramResult;
     use anchor_spl::token::{self, Transfer};
@@ -117,6 +121,34 @@ pub mod crypto_mapp {
 
         Ok(())
     }
+
+    // Function to add a review for a merchant
+    pub fn add_review(
+        ctx: Context<AddReview>,
+        transaction_id: Pubkey,
+        rating: u8,
+    ) -> ProgramResult {
+        // Ensure the rating is within the valid range
+        if rating < 1 || rating > 5 {
+            return Err(ErrorCode::InvalidRating.into());
+        }
+
+        // Ensure the caller is the DAO
+        let dao_pubkey = Pubkey::from_str(DAO_PUBKEY).unwrap();
+        if ctx.accounts.signer.key() != dao_pubkey {
+            return Err(ErrorCode::Unauthorized.into());
+        }
+
+        // Add the review
+        let review = Review {
+            transaction_id,
+            rating,
+        };
+        let merchant_account = &mut ctx.accounts.merchant;
+        merchant_account.reviews.push(review);
+
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -172,6 +204,28 @@ pub struct ExecuteTransaction<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+#[account]
+pub struct Merchant {
+    // Other fields...
+    reviews: Vec<Review>, // List of reviews
+}
+
+#[derive(Accounts)]
+pub struct AddReview<'info> {
+    #[account(mut)]
+    pub merchant: Account<'info, Merchant>,
+    /// CHECK: The `dao` field represents the DAO signer. We check that the key of this account
+    /// matches the known DAO public key to ensure that the caller is authorized to add reviews.
+    #[account(signer)]
+    pub signer: AccountInfo<'info>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct Review {
+    transaction_id: Pubkey, // Transaction ID for which the review is being left
+    rating: u8,             // Review rating, e.g., 1 to 5
+}
+
 #[error_code]
 pub enum ErrorCode {
     #[msg("The specified user does not exist.")]
@@ -184,4 +238,8 @@ pub enum ErrorCode {
     TransactionAmountTooLow,
     #[msg("Insufficient funds for the transaction.")]
     InsufficientFunds,
+    #[msg("Invalid rating provided.")]
+    InvalidRating,
+    #[msg("Unauthorized.")]
+    Unauthorized,
 }
