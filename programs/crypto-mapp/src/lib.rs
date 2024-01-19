@@ -20,6 +20,12 @@ pub mod crypto_mapp {
     use anchor_lang::solana_program::entrypoint::ProgramResult;
     use anchor_spl::token::{self, Transfer};
 
+    pub fn initialize(ctx: Context<Initialize>, dao_pubkey: Pubkey) -> ProgramResult {
+        let state = &mut ctx.accounts.state;
+        state.dao_pubkey = dao_pubkey;
+        Ok(())
+    }
+
     // Function to initialize a new user
     pub fn initialize_user(ctx: Context<InitializeUser>) -> ProgramResult {
         let user_exp_account = &mut ctx.accounts.user_exp;
@@ -149,6 +155,20 @@ pub mod crypto_mapp {
 
         Ok(())
     }
+}
+
+#[account]
+pub struct ProgramState {
+    dao_pubkey: Pubkey,
+}
+
+#[derive(Accounts)]
+pub struct Initialize<'info> {
+    #[account(init, payer = user, space = 8 + 40)] // Adjust the space as needed
+    pub state: Account<'info, ProgramState>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
