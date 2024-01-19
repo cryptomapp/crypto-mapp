@@ -1,6 +1,7 @@
 // import * as anchor from "@coral-xyz/anchor";
 // import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 // import { CryptoMapp } from "../target/types/crypto_mapp";
+// import { fundAccount, calculatePDA } from "./test_setup";
 // import { assert } from "chai";
 
 // describe("crypto_mapp", () => {
@@ -30,17 +31,19 @@
 //   }
 
 //   beforeEach(async () => {
-//     // Setup for tests that require only one user
 //     newUser = anchor.web3.Keypair.generate();
-//     const newUserSetup = await setupAccount(newUser);
-//     newUserExpPda = newUserSetup.pda;
-//     newUserBump = newUserSetup.bump;
+//     await fundAccount(provider.connection, newUser);
+//     [newUserExpPda, newUserBump] = await calculatePDA(
+//       program.programId,
+//       newUser
+//     );
 
-//     // Setup for tests that require a referrer
 //     referrer = anchor.web3.Keypair.generate();
-//     const referrerSetup = await setupAccount(referrer);
-//     referrerExpPda = referrerSetup.pda;
-//     referrerBump = referrerSetup.bump;
+//     await fundAccount(provider.connection, referrer);
+//     [referrerExpPda, referrerBump] = await calculatePDA(
+//       program.programId,
+//       referrer
+//     );
 //   });
 
 //   it("Initializes a new user", async () => {

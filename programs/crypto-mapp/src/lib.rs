@@ -1,10 +1,13 @@
+mod merchant;
+mod user;
+
+use crate::user::*;
+
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program_error::ProgramError;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
 declare_id!("2fN9ZMRnTB3MHi3oT3HFJcReY7jTJDDhoQNFKrbTKTTe");
-
-const DAO_PUBKEY: &str = "HyZWBzi5EH9mm7FFhpAHQArm5JyY1KPeWgSxMN6YZdJy";
 
 impl From<ErrorCode> for ProgramError {
     fn from(e: ErrorCode) -> ProgramError {
@@ -14,8 +17,6 @@ impl From<ErrorCode> for ProgramError {
 
 #[program]
 pub mod crypto_mapp {
-    use std::str::FromStr;
-
     use super::*;
     use anchor_lang::solana_program::entrypoint::ProgramResult;
     use anchor_spl::token::{self, Transfer};
@@ -26,61 +27,18 @@ pub mod crypto_mapp {
         Ok(())
     }
 
-    // Function to initialize a new user
     pub fn initialize_user(ctx: Context<InitializeUser>) -> ProgramResult {
-        let user_exp_account = &mut ctx.accounts.user_exp;
-        // Ensure the user account is freshly created
-        if user_exp_account.exp_points != 0 {
-            return Err(ErrorCode::UserAlreadyExists.into());
-        }
-
-        user_exp_account.exp_points = 100;
-        Ok(())
+        user::initialize_user(ctx)
     }
 
-    // Function to initialize a new user with a referrer
-    pub fn initialize_user_with_referrer(ctx: Context<InitializeUserWithReferrer>) -> Result<()> {
-        let user_exp_account = &mut ctx.accounts.user_exp;
-        let referrer_exp_account = &mut ctx.accounts.referrer_exp;
-
-        // Ensure the user account is freshly created & referrer exists
-        if user_exp_account.exp_points != 0 {
-            return Err(ErrorCode::UserAlreadyExists.into());
-        }
-        if referrer_exp_account.exp_points <= 0 {
-            return Err(ErrorCode::ReferrerDoesNotExist.into());
-        }
-
-        user_exp_account.exp_points = 150; // New user gets 150 EXP
-        referrer_exp_account.exp_points += 50; // Referrer gets +50 EXP
-
-        Ok(())
+    pub fn initialize_user_with_referrer(
+        ctx: Context<InitializeUserWithReferrer>,
+    ) -> ProgramResult {
+        user::initialize_user_with_referrer(ctx)
     }
 
-    // Function to check if a user exists
-    pub fn check_user_exists(ctx: Context<CheckUserExists>) -> Result<()> {
-        require!(
-            ctx.accounts.user_exp.to_account_info().lamports() > 0,
-            ErrorCode::UserDoesNotExist
-        );
-        msg!("User exists");
-        Ok(())
-    }
-
-    // Function to mint EXP for becoming a merchant
-    pub fn mint_exp_for_merchant(ctx: Context<MintExpForMerchant>) -> Result<()> {
-        let user_exp_account = &mut ctx.accounts.user_exp;
-
-        // Check if the user exists
-        if user_exp_account.exp_points == 0 {
-            return Err(ErrorCode::UserDoesNotExist.into());
-        }
-
-        // Mint 100 EXP to the user
-        user_exp_account.exp_points += 100;
-
-        msg!("100 EXP minted for becoming a merchant");
-        Ok(())
+    pub fn check_user_exists(ctx: Context<CheckUserExists>) -> ProgramResult {
+        user::check_user_exists(ctx)
     }
 
     // Function to execute a transaction
@@ -139,11 +97,7 @@ pub mod crypto_mapp {
             return Err(ErrorCode::InvalidRating.into());
         }
 
-        // Ensure the caller is the DAO
-        let dao_pubkey = Pubkey::from_str(DAO_PUBKEY).unwrap();
-        if ctx.accounts.signer.key() != dao_pubkey {
-            return Err(ErrorCode::Unauthorized.into());
-        }
+        // No need to manually check if the signer is DAO, as it's done in the context constraint
 
         // Add the review
         let review = Review {
@@ -170,43 +124,9 @@ pub struct Initialize<'info> {
     pub user: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
-
-#[derive(Accounts)]
-pub struct InitializeUser<'info> {
-    #[account(init, payer = user, space = 8 + 32 + 4, seeds = [user.key().as_ref()], bump)]
-    pub user_exp: Account<'info, UserExp>,
-    #[account(mut)]
-    pub user: Signer<'info>,
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-pub struct InitializeUserWithReferrer<'info> {
-    #[account(init, payer = user, space = 8 + 32 + 4, seeds = [user.key().as_ref()], bump)]
-    pub user_exp: Account<'info, UserExp>,
-    #[account(mut, seeds = [referrer.key().as_ref()], bump)]
-    pub referrer_exp: Account<'info, UserExp>,
-    #[account(mut)]
-    pub user: Signer<'info>,
-    /// CHECK: The referrer's public key is used only for deriving the PDA of the referrer_exp account.
-    pub referrer: AccountInfo<'info>,
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-pub struct CheckUserExists<'info> {
-    #[account(mut)]
-    pub user_exp: Account<'info, UserExp>,
-}
-
-#[derive(Accounts)]
-pub struct MintExpForMerchant<'info> {
-    #[account(mut)]
-    pub user_exp: Account<'info, UserExp>,
-}
-
 #[account]
 pub struct UserExp {
+    pub is_initialized: bool,
     pub exp_points: u32,
 }
 
@@ -234,6 +154,8 @@ pub struct Merchant {
 pub struct AddReview<'info> {
     #[account(mut)]
     pub merchant: Account<'info, Merchant>,
+    #[account(constraint = state.dao_pubkey == signer.key())] // Ensure signer is DAO
+    pub state: Account<'info, ProgramState>,
     /// CHECK: The `dao` field represents the DAO signer. We check that the key of this account
     /// matches the known DAO public key to ensure that the caller is authorized to add reviews.
     #[account(signer)]
