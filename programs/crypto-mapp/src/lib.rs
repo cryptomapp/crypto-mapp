@@ -18,7 +18,6 @@ impl From<ErrorCode> for ProgramError {
 
 #[program]
 pub mod crypto_mapp {
-    use self::merchant::MintExpForMerchant;
 
     use super::*;
     use anchor_lang::solana_program::entrypoint::ProgramResult;
@@ -44,8 +43,18 @@ pub mod crypto_mapp {
         user::check_user_exists(ctx)
     }
 
-    pub fn mint_exp_for_merchant(ctx: Context<MintExpForMerchant>) -> ProgramResult {
-        merchant::mint_exp_for_merchant(ctx)
+    pub fn initialize_merchant(
+        ctx: Context<InitializeMerchant>,
+        nft_identifier: CnftIdentifier,
+    ) -> ProgramResult {
+        merchant::initialize_merchant(ctx, nft_identifier)
+    }
+
+    pub fn initialize_merchant_with_referrer(
+        ctx: Context<InitializeMerchantWithReferrer>,
+        nft_identifier: CnftIdentifier,
+    ) -> ProgramResult {
+        merchant::initialize_merchant_with_referrer(ctx, nft_identifier)
     }
 
     // Function to execute a transaction
@@ -112,7 +121,7 @@ pub mod crypto_mapp {
             rating,
         };
         let merchant_account = &mut ctx.accounts.merchant;
-        merchant_account.reviews.push(review);
+        // merchant_account.reviews.push(review);
 
         Ok(())
     }
@@ -121,6 +130,7 @@ pub mod crypto_mapp {
 #[account]
 pub struct ProgramState {
     dao_pubkey: Pubkey,
+    merchant_counter: u32,
 }
 
 #[derive(Accounts)]
@@ -144,12 +154,6 @@ pub struct ExecuteTransaction<'info> {
     pub dao_usdc_account: Account<'info, TokenAccount>,
     pub usdc_mint: Account<'info, Mint>,
     pub token_program: Program<'info, Token>,
-}
-
-#[account]
-pub struct Merchant {
-    // Other fields...
-    reviews: Vec<Review>, // List of reviews
 }
 
 #[derive(Accounts)]
@@ -184,6 +188,8 @@ pub enum ErrorCode {
     InsufficientFunds,
     #[msg("Invalid rating provided.")]
     InvalidRating,
+    #[msg("Invalid referrer provided.")]
+    InvalidReferrer,
     #[msg("Unauthorized.")]
     Unauthorized,
 }

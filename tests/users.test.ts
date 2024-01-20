@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
 import { CryptoMapp } from "../target/types/crypto_mapp";
-import { fundAccount, calculatePDA } from "./test_setup"; // Assuming you have a test_setup file
+import { fundAccount, calculatePDA } from "./test_setup";
 
 describe("User Functionality Tests", () => {
   const provider = anchor.AnchorProvider.env();
