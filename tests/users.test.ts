@@ -9,19 +9,19 @@ describe("User Functionality Tests", () => {
   const program = anchor.workspace.CryptoMapp as anchor.Program<CryptoMapp>;
 
   let user: anchor.web3.Keypair;
-  let userExpPda: anchor.web3.PublicKey;
+  let userPda: anchor.web3.PublicKey;
 
   beforeEach(async () => {
     user = anchor.web3.Keypair.generate();
     await fundAccount(provider.connection, user);
-    [userExpPda] = await calculatePDA(program.programId, user);
+    [userPda] = await calculatePDA(program.programId, user);
   });
 
   async function initializeNewUser() {
     await program.methods
       .initializeUser()
       .accounts({
-        userExp: userExpPda,
+        userAccount: userPda,
         user: user.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
@@ -33,7 +33,7 @@ describe("User Functionality Tests", () => {
     await initializeNewUser();
 
     // Fetch the UserExp account
-    const userExpAccount = await program.account.userExp.fetch(userExpPda);
+    const userExpAccount = await program.account.user.fetch(userPda);
 
     // Assertions
     assert.equal(
@@ -48,10 +48,7 @@ describe("User Functionality Tests", () => {
 
     // Check if the user exists
     try {
-      await program.methods
-        .checkUserExists()
-        .accounts({ userExp: userExpPda })
-        .rpc();
+      await program.methods.checkUserExists().accounts({ user: userPda }).rpc();
 
       // If no error is thrown, the user exists
       assert.isTrue(true, "User exists");
@@ -65,11 +62,11 @@ describe("User Functionality Tests", () => {
     // Create a referrer user
     const referrer = anchor.web3.Keypair.generate();
     await fundAccount(provider.connection, referrer);
-    const [referrerExpPda] = await calculatePDA(program.programId, referrer);
+    const [referrerPda] = await calculatePDA(program.programId, referrer);
     await program.methods
       .initializeUser()
       .accounts({
-        userExp: referrerExpPda,
+        userAccount: referrerPda,
         user: referrer.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
@@ -80,9 +77,9 @@ describe("User Functionality Tests", () => {
     await program.methods
       .initializeUserWithReferrer()
       .accounts({
-        userExp: userExpPda,
+        userAccount: userPda,
         user: user.publicKey,
-        referrerExp: referrerExpPda,
+        referrerAccount: referrerPda,
         referrer: referrer.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
@@ -90,10 +87,8 @@ describe("User Functionality Tests", () => {
       .rpc();
 
     // Fetch and verify the accounts
-    const newUserExpAccount = await program.account.userExp.fetch(userExpPda);
-    const referrerExpAccount = await program.account.userExp.fetch(
-      referrerExpPda
-    );
+    const newUserExpAccount = await program.account.user.fetch(userPda);
+    const referrerExpAccount = await program.account.user.fetch(referrerPda);
 
     // Assertions
     assert.equal(
@@ -108,18 +103,17 @@ describe("User Functionality Tests", () => {
     );
   });
 
-  // TODO: this test fails with 0x0 instead of 0x1
   it("Fails to initialize an already existing user", async () => {
     // Create a new user keypair
     const newUser = anchor.web3.Keypair.generate();
     await fundAccount(provider.connection, newUser);
-    const [newUserExpPda] = await calculatePDA(program.programId, newUser);
+    const [newuserPda] = await calculatePDA(program.programId, newUser);
 
     // Initialize the new user
     await program.methods
       .initializeUser()
       .accounts({
-        userExp: newUserExpPda,
+        userAccount: newuserPda,
         user: newUser.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
@@ -127,7 +121,7 @@ describe("User Functionality Tests", () => {
       .rpc();
 
     // Fetch the UserExp account to confirm initialization
-    const userExpAccount = await program.account.userExp.fetch(newUserExpPda);
+    const userExpAccount = await program.account.user.fetch(newuserPda);
     assert.equal(
       userExpAccount.expPoints,
       100,
@@ -139,7 +133,7 @@ describe("User Functionality Tests", () => {
       await program.methods
         .initializeUser()
         .accounts({
-          userExp: newUserExpPda,
+          userAccount: newuserPda,
           user: newUser.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
         })
@@ -148,9 +142,8 @@ describe("User Functionality Tests", () => {
 
       assert.fail("Reinitialization did not fail as expected");
     } catch (error) {
-      console.error("Error message:", error);
       // Check if the error is for an already existing user
-      const isUserAlreadyExistsError = error.message.includes("0x1");
+      const isUserAlreadyExistsError = error.message.includes("0x0"); // handled by Anchor
       assert.isTrue(
         isUserAlreadyExistsError,
         "Error should be for already existing user"

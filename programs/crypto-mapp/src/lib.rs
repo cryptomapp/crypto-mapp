@@ -1,6 +1,7 @@
 mod merchant;
 mod user;
 
+use crate::merchant::*;
 use crate::user::*;
 
 use anchor_lang::prelude::*;
@@ -17,6 +18,8 @@ impl From<ErrorCode> for ProgramError {
 
 #[program]
 pub mod crypto_mapp {
+    use self::merchant::MintExpForMerchant;
+
     use super::*;
     use anchor_lang::solana_program::entrypoint::ProgramResult;
     use anchor_spl::token::{self, Transfer};
@@ -39,6 +42,10 @@ pub mod crypto_mapp {
 
     pub fn check_user_exists(ctx: Context<CheckUserExists>) -> ProgramResult {
         user::check_user_exists(ctx)
+    }
+
+    pub fn mint_exp_for_merchant(ctx: Context<MintExpForMerchant>) -> ProgramResult {
+        merchant::mint_exp_for_merchant(ctx)
     }
 
     // Function to execute a transaction
@@ -123,11 +130,6 @@ pub struct Initialize<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
     pub system_program: Program<'info, System>,
-}
-#[account]
-pub struct UserExp {
-    pub is_initialized: bool,
-    pub exp_points: u32,
 }
 
 #[derive(Accounts)]

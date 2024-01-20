@@ -1,13 +1,14 @@
 use crate::ErrorCode;
-use crate::UserExp; // Import ErrorCode from your lib.rs
+use crate::User;
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::entrypoint::ProgramResult;
 
 // Function to mint EXP for becoming a merchant
-pub fn mint_exp_for_merchant(ctx: Context<MintExpForMerchant>) -> Result<()> {
-    let user_exp_account = &mut ctx.accounts.user_exp;
+pub fn mint_exp_for_merchant(ctx: Context<MintExpForMerchant>) -> ProgramResult {
+    let user_exp_account = &mut ctx.accounts.user;
 
-    // Check if the user exists
-    if user_exp_account.exp_points == 0 {
+    // Check if the user is initialized
+    if !user_exp_account.is_initialized {
         return Err(ErrorCode::UserDoesNotExist.into());
     }
 
@@ -21,5 +22,5 @@ pub fn mint_exp_for_merchant(ctx: Context<MintExpForMerchant>) -> Result<()> {
 #[derive(Accounts)]
 pub struct MintExpForMerchant<'info> {
     #[account(mut)]
-    pub user_exp: Account<'info, UserExp>,
+    pub user: Account<'info, User>,
 }
