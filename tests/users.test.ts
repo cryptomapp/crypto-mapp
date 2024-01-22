@@ -14,7 +14,7 @@ describe("User Functionality Tests", () => {
   beforeEach(async () => {
     user = anchor.web3.Keypair.generate();
     await fundAccount(provider.connection, user);
-    [userPda] = await calculatePDA(program.programId, user);
+    [userPda] = await calculatePDA(program.programId, user, "user");
   });
 
   async function initializeNewUser() {
@@ -62,7 +62,15 @@ describe("User Functionality Tests", () => {
     // Create a referrer user
     const referrer = anchor.web3.Keypair.generate();
     await fundAccount(provider.connection, referrer);
-    const [referrerPda] = await calculatePDA(program.programId, referrer);
+    const [referrerPda] = await calculatePDA(
+      program.programId,
+      referrer,
+      "user"
+    );
+
+    console.log("UserPda:", userPda.toBase58());
+    console.log("ReferrerPda:", referrerPda.toBase58());
+
     await program.methods
       .initializeUser()
       .accounts({
@@ -107,7 +115,7 @@ describe("User Functionality Tests", () => {
     // Create a new user keypair
     const newUser = anchor.web3.Keypair.generate();
     await fundAccount(provider.connection, newUser);
-    const [newuserPda] = await calculatePDA(program.programId, newUser);
+    const [newuserPda] = await calculatePDA(program.programId, newUser, "user");
 
     // Initialize the new user
     await program.methods

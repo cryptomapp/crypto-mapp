@@ -15,6 +15,12 @@ pub fn initialize_user(ctx: Context<InitializeUser>) -> ProgramResult {
 
 // Function to initialize a new user with a referrer
 pub fn initialize_user_with_referrer(ctx: Context<InitializeUserWithReferrer>) -> ProgramResult {
+    msg!(
+        "Calculated Referrer PDA: {}",
+        ctx.accounts.referrer_account.key()
+    );
+    msg!("Calculated User PDA: {}", ctx.accounts.user_account.key());
+
     let user_account = &mut ctx.accounts.user_account;
     let referrer_account = &mut ctx.accounts.referrer_account;
 
@@ -52,7 +58,7 @@ pub struct CheckUserExists<'info> {
 
 #[derive(Accounts)]
 pub struct InitializeUser<'info> {
-    #[account(init, payer = user, space = 8 + 1 + 4 + 33 + 10, seeds = [user.key().as_ref()], bump)]
+    #[account(init, payer = user, space = 8 + 1 + 4 + 33 + 10, seeds = [b"user".as_ref(), user.key().as_ref()], bump)]
     pub user_account: Account<'info, User>,
     #[account(mut)]
     pub user: Signer<'info>,
@@ -61,9 +67,9 @@ pub struct InitializeUser<'info> {
 
 #[derive(Accounts)]
 pub struct InitializeUserWithReferrer<'info> {
-    #[account(init, payer = user, space = 8 + 1 + 4 + 33 + 10, seeds = [user.key().as_ref()], bump)]
+    #[account(init, payer = user, space = 8 + 1 + 4 + 33 + 10, seeds = [b"user".as_ref(), user.key().as_ref()], bump)]
     pub user_account: Account<'info, User>,
-    #[account(mut, seeds = [referrer.key().as_ref()], bump)]
+    #[account(mut, seeds = [b"user".as_ref(), referrer.key().as_ref()], bump)]
     pub referrer_account: Account<'info, User>,
     #[account(mut)]
     pub user: Signer<'info>,

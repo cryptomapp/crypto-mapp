@@ -7,6 +7,8 @@ pub fn initialize_merchant(
     ctx: Context<InitializeMerchant>,
     nft_identifier: CnftIdentifier,
 ) -> ProgramResult {
+    msg!("Calculated Merchant PDA: {}", ctx.accounts.merchant.key());
+
     let state = &mut ctx.accounts.state;
     let merchant = &mut ctx.accounts.merchant;
     let user_account = &mut ctx.accounts.user_account;
@@ -69,7 +71,8 @@ pub struct CnftIdentifier {
 
 #[derive(Accounts)]
 pub struct InitializeMerchant<'info> {
-    #[account(init, payer = user, space = 8 + mem::size_of::<Merchant>())]
+    #[account(init, payer = user, space = 8 + mem::size_of::<Merchant>(), seeds = [b"merchant".as_ref(), user.key().as_ref()]
+    , bump)]
     pub merchant: Account<'info, Merchant>,
     #[account(mut)]
     pub user_account: Account<'info, User>,

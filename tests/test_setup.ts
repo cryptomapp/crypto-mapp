@@ -38,31 +38,11 @@ export async function fundAccount(
 
 export async function calculatePDA(
   programId: PublicKey,
-  account: Keypair
+  account: Keypair,
+  seedPrefix: string
 ): Promise<[PublicKey, number]> {
-  return PublicKey.findProgramAddressSync(
-    [account.publicKey.toBuffer()],
-    programId
-  );
-}
-
-export async function calculateReferrerPdaFromUserAccount(
-  program: Program,
-  userPublicKey: PublicKey
-): Promise<[PublicKey, number] | null> {
-  try {
-    const userAccount = await program.account.user.fetch(userPublicKey);
-
-    if (userAccount.referrer) {
-      const referrerPublicKey = new PublicKey(userAccount.referrer);
-      return PublicKey.findProgramAddressSync(
-        [referrerPublicKey.toBuffer()],
-        program.programId
-      );
-    }
-  } catch (error) {
-    console.error("Error fetching user account or calculating PDA:", error);
-  }
-
-  return null;
+  const seeds = seedPrefix
+    ? [Buffer.from(seedPrefix), account.publicKey.toBuffer()]
+    : [account.publicKey.toBuffer()];
+  return PublicKey.findProgramAddressSync(seeds, programId);
 }
