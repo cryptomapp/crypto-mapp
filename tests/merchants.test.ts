@@ -3,7 +3,10 @@ import { assert } from "chai";
 import { CryptoMapp } from "../target/types/crypto_mapp";
 import { fundAccount, calculatePDA, initializeState } from "./test_setup";
 
-describe.only("Merchant Functionality Tests", () => {
+// TODO: Needs better separation of tests
+// In this case third one is failing.
+
+describe("Merchant Functionality Tests", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
   const program = anchor.workspace.CryptoMapp as anchor.Program<CryptoMapp>;
@@ -174,8 +177,20 @@ describe.only("Merchant Functionality Tests", () => {
   });
 
   it("Should not allow initializing a merchant with an invalid referrer", async () => {
-    // Initialize a potential merchant
-    await initializeNewUser(); // Assuming this initializes 'user'
+    // Initialize the user
+    const user2 = anchor.web3.Keypair.generate();
+    const [user2Pda] = await calculatePDA(program.programId, user2, "user");
+    await fundAccount(provider.connection, user2);
+
+    await program.methods
+      .initializeUser()
+      .accounts({
+        userAccount: user2Pda,
+        user: user2.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([user2])
+      .rpc();
 
     // Initialize a potential invalid referrer
     const invalidReferrer = anchor.web3.Keypair.generate();
@@ -196,7 +211,7 @@ describe.only("Merchant Functionality Tests", () => {
       .rpc();
 
     // Attempt to initialize merchant with the invalid referrer
-    [merchantPda] = await calculatePDA(program.programId, user, "merchant");
+    [merchantPda] = await calculatePDA(program.programId, user2, "merchant");
     const nftIdentifier = {
       merkle_tree_address: new anchor.web3.PublicKey(
         "BPFLoaderUpgradeab1e11111111111111111111111"
@@ -212,14 +227,14 @@ describe.only("Merchant Functionality Tests", () => {
         })
         .accounts({
           merchantAccount: merchantPda,
-          userAccount: userPda,
-          user: user.publicKey,
+          userAccount: user2Pda,
+          user: user2.publicKey,
           referrer: invalidReferrer.publicKey,
-          referrerAccount: invalidReferrerPda, // Note: Using the invalid referrer's PDA
+          referrerAccount: invalidReferrerPda,
           state: stateAccount.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
         })
-        .signers([user])
+        .signers([user2])
         .rpc();
       throw new Error("Test should have failed with InvalidReferrer error");
     } catch (error) {
@@ -232,6 +247,4 @@ describe.only("Merchant Functionality Tests", () => {
       );
     }
   });
-
-  // Additional tests can be added here
 });

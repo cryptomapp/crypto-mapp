@@ -27,6 +27,7 @@ pub fn initialize_merchant_with_referrer(
     ctx: Context<InitializeMerchantWithReferrer>,
     nft_identifier: CnftIdentifier,
 ) -> ProgramResult {
+    msg!("DEV: Welcome in hell");
     let state = &mut ctx.accounts.state;
     let merchant_account = &mut ctx.accounts.merchant_account;
     let user_account = &mut ctx.accounts.user_account;
