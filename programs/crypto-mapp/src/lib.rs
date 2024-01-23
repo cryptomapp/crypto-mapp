@@ -47,6 +47,7 @@ pub mod crypto_mapp {
         ctx: Context<InitializeMerchant>,
         nft_identifier: CnftIdentifier,
     ) -> ProgramResult {
+        msg!("DEV: TEST");
         merchant::initialize_merchant(ctx, nft_identifier)
     }
 
@@ -54,6 +55,16 @@ pub mod crypto_mapp {
         ctx: Context<InitializeMerchantWithReferrer>,
         nft_identifier: CnftIdentifier,
     ) -> ProgramResult {
+        msg!("DEV: User: {}", ctx.accounts.user.to_account_info().key);
+        msg!(
+            "DEV: ReferrerAccount: {}",
+            ctx.accounts.referrer_account.to_account_info().key
+        );
+        msg!(
+            "DEV: Referrer: {}",
+            ctx.accounts.user_account.referrer.unwrap()
+        );
+
         merchant::initialize_merchant_with_referrer(ctx, nft_identifier)
     }
 

@@ -109,6 +109,11 @@ describe("User Functionality Tests", () => {
       150,
       "Referrer should have 150 EXP points after referral"
     );
+    assert.strictEqual(
+      newUserExpAccount.referrer.toString(),
+      referrer.publicKey.toString(),
+      "New user's referrer public key should match the referrer's public key"
+    );
   });
 
   it("Fails to initialize an already existing user", async () => {

@@ -7,15 +7,13 @@ pub fn initialize_merchant(
     ctx: Context<InitializeMerchant>,
     nft_identifier: CnftIdentifier,
 ) -> ProgramResult {
-    msg!("Calculated Merchant PDA: {}", ctx.accounts.merchant.key());
-
     let state = &mut ctx.accounts.state;
-    let merchant = &mut ctx.accounts.merchant;
+    let merchant_account = &mut ctx.accounts.merchant_account;
     let user_account = &mut ctx.accounts.user_account;
 
-    merchant.nft_identifier = nft_identifier; // Set NFT identifier
-    merchant.is_initialized = true; // Mark merchant as initialized
-    merchant.user_pubkey = *user_account.to_account_info().key; // Set user pubkey
+    merchant_account.nft_identifier = nft_identifier; // Set NFT identifier
+    merchant_account.is_initialized = true; // Mark merchant as initialized
+    merchant_account.user_pubkey = *user_account.to_account_info().key; // Set user pubkey
 
     state.merchant_counter += 1; // Increment merchant counter
 
@@ -30,31 +28,43 @@ pub fn initialize_merchant_with_referrer(
     nft_identifier: CnftIdentifier,
 ) -> ProgramResult {
     let state = &mut ctx.accounts.state;
-    let merchant = &mut ctx.accounts.merchant;
+    let merchant_account = &mut ctx.accounts.merchant_account;
     let user_account = &mut ctx.accounts.user_account;
-    let referrer_account = &mut ctx.accounts.referrer;
+    let referrer_account = &mut ctx.accounts.referrer_account;
 
-    merchant.nft_identifier = nft_identifier; // Set NFT identifier
-    merchant.is_initialized = true; // Mark merchant as initialized
-    merchant.user_pubkey = *user_account.to_account_info().key; // Set user pubkey
-    state.merchant_counter += 1; // Increment merchant counter
+    // Set NFT identifier and mark merchant as initialized
+    merchant_account.nft_identifier = nft_identifier;
+    merchant_account.is_initialized = true;
+    merchant_account.user_pubkey = *user_account.to_account_info().key;
+
+    // Increment merchant counter in the state
+    state.merchant_counter += 1;
 
     // Logic to mint EXP to merchant
     user_account.exp_points += 100;
 
     // Logic to mint EXP to referrer
-    if let Some(referrer_pubkey) = user_account.referrer {
-        if referrer_pubkey == *referrer_account.to_account_info().key {
-            referrer_account.exp_points += 150;
-        } else {
-            return Err(ErrorCode::InvalidReferrer.into());
+    match user_account.referrer {
+        Some(referrer_pubkey) => {
+            // Validate that the provided referrer account matches the referrer public key in user_account
+            if referrer_pubkey == referrer_pubkey {
+                // Add EXP points to referrer account
+                referrer_account.exp_points += 150;
+            } else {
+                // Return error if the referrer public key does not match
+                return Err(ErrorCode::InvalidReferrer.into());
+            }
+        },
+        None => {
+            // Return error if no referrer is set in user_account
+            return Err(ErrorCode::ReferrerDoesNotExist.into());
         }
-    } else {
-        return Err(ErrorCode::ReferrerDoesNotExist.into());
     }
 
     Ok(())
 }
+
+
 
 #[account]
 pub struct Merchant {
@@ -71,9 +81,10 @@ pub struct CnftIdentifier {
 
 #[derive(Accounts)]
 pub struct InitializeMerchant<'info> {
-    #[account(init, payer = user, space = 8 + mem::size_of::<Merchant>(), seeds = [b"merchant".as_ref(), user.key().as_ref()]
+    #[account(init, payer = user, space = 8 + mem::size_of::<Merchant>(), 
+    seeds = [b"merchant".as_ref(), user.key().as_ref()]
     , bump)]
-    pub merchant: Account<'info, Merchant>,
+    pub merchant_account: Account<'info, Merchant>,
     #[account(mut)]
     pub user_account: Account<'info, User>,
     #[account(mut)]
@@ -85,8 +96,9 @@ pub struct InitializeMerchant<'info> {
 
 #[derive(Accounts)]
 pub struct InitializeMerchantWithReferrer<'info> {
-    #[account(init, payer = user, space = 8 + mem::size_of::<Merchant>())]
-    pub merchant: Account<'info, Merchant>,
+    #[account(init, payer = user, space = 8 + mem::size_of::<Merchant>(), 
+    seeds = [b"merchant".as_ref(), user.key().as_ref()], bump)]
+    pub merchant_account: Account<'info, Merchant>,
     #[account(mut)]
     pub user_account: Account<'info, User>,
     #[account(mut)]
@@ -95,5 +107,7 @@ pub struct InitializeMerchantWithReferrer<'info> {
     pub state: Account<'info, ProgramState>,
     pub system_program: Program<'info, System>,
     #[account(mut)]
-    pub referrer: Account<'info, User>,
+    pub referrer_account: Account<'info, User>,  // This would be the referrerPda
+    /// CHECK: This is only used for validation
+    pub referrer: AccountInfo<'info>, // This would be the referrer's public key
 }

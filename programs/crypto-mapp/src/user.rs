@@ -15,12 +15,6 @@ pub fn initialize_user(ctx: Context<InitializeUser>) -> ProgramResult {
 
 // Function to initialize a new user with a referrer
 pub fn initialize_user_with_referrer(ctx: Context<InitializeUserWithReferrer>) -> ProgramResult {
-    msg!(
-        "Calculated Referrer PDA: {}",
-        ctx.accounts.referrer_account.key()
-    );
-    msg!("Calculated User PDA: {}", ctx.accounts.user_account.key());
-
     let user_account = &mut ctx.accounts.user_account;
     let referrer_account = &mut ctx.accounts.referrer_account;
 
