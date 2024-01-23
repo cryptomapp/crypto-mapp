@@ -1,4 +1,4 @@
-use crate::{ErrorCode, ProgramState, User};
+use crate::ErrorCode;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::entrypoint::ProgramResult;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
