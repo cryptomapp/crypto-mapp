@@ -22,7 +22,7 @@ CryptoMapp is a decentralized application built on the Solana blockchain, focuse
 1. Clone the repository:
 
    ```
-   git clone https://github.com/yourGithub/CryptoMapp.git
+   git clone [https://github.com/cryptomapp/solana.git](https://github.com/cryptomapp/solana.git)
    ```
 
 2. Navigate to the project directory:
