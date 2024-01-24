@@ -13,13 +13,16 @@ describe("Program Initialization Tests", () => {
   const testDaoKeypair = Keypair.generate();
   const testDaoPubkey = testDaoKeypair.publicKey;
 
+  const testReviewWalletKeypair = Keypair.generate();
+  const testReviewWalletPubkey = testReviewWalletKeypair.publicKey;
+
   it("initializes the program state with the test DAO public key", async () => {
     // Generate a new keypair for the program state account
     const programStateAccount = Keypair.generate();
 
     // Send a transaction to initialize the program state
     await program.methods
-      .initialize(testDaoPubkey)
+      .initialize(testDaoPubkey, testReviewWalletPubkey)
       .accounts({
         state: programStateAccount.publicKey,
         user: provider.wallet.publicKey,
@@ -37,6 +40,10 @@ describe("Program Initialization Tests", () => {
     assert.ok(
       state.daoPubkey.equals(testDaoPubkey),
       "DAO public key should be set correctly in the program state"
+    );
+    assert.ok(
+      state.reviewWalletPubkey.equals(testReviewWalletPubkey),
+      "Review wallet public key should be set correctly in the program state"
     );
   });
 });

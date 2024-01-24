@@ -3,6 +3,8 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::entrypoint::ProgramResult;
 use std::mem;
 
+const MAX_REVIEWS: usize = 255;
+
 pub fn initialize_merchant(
     ctx: Context<InitializeMerchant>,
     nft_identifier: CnftIdentifier,
@@ -50,12 +52,12 @@ pub fn initialize_merchant_with_referrer(
             // Validate that the provided referrer account matches the referrer public key in user_account
             if referrer_pubkey == referrer_pubkey {
                 // Add EXP points to referrer account
-                referrer_account.exp_points += 150;
+                referrer_account.exp_points += 200;
             } else {
                 // Return error if the referrer public key does not match
                 return Err(ErrorCode::InvalidReferrer.into());
             }
-        },
+        }
         None => {
             // Return error if no referrer is set in user_account
             return Err(ErrorCode::ReferrerDoesNotExist.into());
@@ -65,13 +67,12 @@ pub fn initialize_merchant_with_referrer(
     Ok(())
 }
 
-
-
 #[account]
 pub struct Merchant {
     is_initialized: bool,
     nft_identifier: CnftIdentifier,
     user_pubkey: Pubkey,
+    pub ratings: Vec<u8>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -82,9 +83,8 @@ pub struct CnftIdentifier {
 
 #[derive(Accounts)]
 pub struct InitializeMerchant<'info> {
-    #[account(init, payer = user, space = 8 + mem::size_of::<Merchant>(), 
-    seeds = [b"merchant".as_ref(), user.key().as_ref()]
-    , bump)]
+    #[account(init, payer = user, space = 8 + mem::size_of::<Merchant>() + MAX_REVIEWS * mem::size_of::<u8>(),
+     seeds = [b"merchant".as_ref(), user.key().as_ref()], bump)]
     pub merchant_account: Account<'info, Merchant>,
     #[account(mut)]
     pub user_account: Account<'info, User>,
@@ -97,8 +97,8 @@ pub struct InitializeMerchant<'info> {
 
 #[derive(Accounts)]
 pub struct InitializeMerchantWithReferrer<'info> {
-    #[account(init, payer = user, space = 8 + mem::size_of::<Merchant>(), 
-    seeds = [b"merchant".as_ref(), user.key().as_ref()], bump)]
+    #[account(init, payer = user, space = 8 + mem::size_of::<Merchant>() + MAX_REVIEWS * mem::size_of::<u8>(),
+     seeds = [b"merchant".as_ref(), user.key().as_ref()], bump)]
     pub merchant_account: Account<'info, Merchant>,
     #[account(mut)]
     pub user_account: Account<'info, User>,
@@ -108,7 +108,7 @@ pub struct InitializeMerchantWithReferrer<'info> {
     pub state: Account<'info, ProgramState>,
     pub system_program: Program<'info, System>,
     #[account(mut)]
-    pub referrer_account: Account<'info, User>,  // This would be the referrerPda
+    pub referrer_account: Account<'info, User>,
     /// CHECK: This is only used for validation
-    pub referrer: AccountInfo<'info>, // This would be the referrer's public key
+    pub referrer: AccountInfo<'info>,
 }

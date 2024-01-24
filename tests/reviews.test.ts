@@ -1,88 +1,154 @@
-// import * as anchor from "@coral-xyz/anchor";
-// import { Program } from "@coral-xyz/anchor";
-// import { CryptoMapp } from "../target/types/crypto_mapp";
-// import { assert } from "chai";
-// import { PublicKey, Keypair, LAMPORTS_PER_SOL } from "@solana/web3.js";
-// import {
-//   createMint,
-//   getAccount,
-//   getOrCreateAssociatedTokenAccount,
-//   mintTo,
-//   TOKEN_PROGRAM_ID,
-// } from "@solana/spl-token";
+import * as anchor from "@coral-xyz/anchor";
+import { assert } from "chai";
+import { CryptoMapp } from "../target/types/crypto_mapp";
+import { fundAccount, calculatePDA, initializeState } from "./test_setup";
 
-// describe("execute_transaction tests", () => {
-//   // Setup the provider
-//   anchor.setProvider(anchor.AnchorProvider.env());
-//   const provider = anchor.AnchorProvider.local();
-//   const program = anchor.workspace.CryptoMapp as Program<CryptoMapp>;
+describe("Review Functionality Tests", () => {
+  const provider = anchor.AnchorProvider.env();
+  anchor.setProvider(provider);
+  const program = anchor.workspace.CryptoMapp as anchor.Program<CryptoMapp>;
 
-//   // Constants
-//   const USDC_DECIMALS = 6;
+  let stateAccount: anchor.web3.Keypair;
+  let daoWallet: anchor.web3.Keypair;
+  let reviewWallet: anchor.web3.Keypair;
+  let user: anchor.web3.Keypair;
+  let userPda: anchor.web3.PublicKey;
+  let merchantPda: anchor.web3.PublicKey;
 
-//   // Keypair generation
-//   const payer = Keypair.generate();
-//   const mintAuthority = Keypair.generate();
-//   const client = Keypair.generate();
-//   const merchant = Keypair.generate();
-//   const dao = Keypair.generate();
+  beforeEach(async () => {
+    user = anchor.web3.Keypair.generate();
+    stateAccount = anchor.web3.Keypair.generate();
+    daoWallet = anchor.web3.Keypair.generate();
+    reviewWallet = anchor.web3.Keypair.generate();
 
-//   // Variable declarations
-//   let mint: PublicKey;
-//   let clientATA, merchantATA, daoATA;
+    await fundAccount(provider.connection, user);
+    await fundAccount(provider.connection, stateAccount);
+    await fundAccount(provider.connection, reviewWallet);
 
-//   // Setup before tests
-//   before(async () => {
-//     // Airdrop SOL to all the keypairs
-//     for (const kp of [payer, mintAuthority, client, merchant, dao]) {
-//       await provider.connection.confirmTransaction(
-//         await provider.connection.requestAirdrop(
-//           kp.publicKey,
-//           LAMPORTS_PER_SOL
-//         ),
-//         "confirmed"
-//       );
-//     }
+    [userPda] = await calculatePDA(program.programId, user, "user");
 
-//     // Create the mock USDC mint
-//     mint = await createMint(
-//       provider.connection,
-//       payer,
-//       mintAuthority.publicKey,
-//       null,
-//       USDC_DECIMALS
-//     );
+    await initializeState(
+      program,
+      stateAccount,
+      user,
+      daoWallet.publicKey,
+      reviewWallet.publicKey
+    );
 
-//     // Create Associated Token Accounts for client, merchant, and dao
-//     [clientATA, merchantATA, daoATA] = await Promise.all([
-//       getOrCreateAssociatedTokenAccount(
-//         provider.connection,
-//         payer,
-//         mint,
-//         client.publicKey
-//       ),
-//       getOrCreateAssociatedTokenAccount(
-//         provider.connection,
-//         payer,
-//         mint,
-//         merchant.publicKey
-//       ),
-//       getOrCreateAssociatedTokenAccount(
-//         provider.connection,
-//         payer,
-//         mint,
-//         dao.publicKey
-//       ),
-//     ]);
+    await initializeNewUser();
+    await initializeMerchant();
+  });
 
-//     // Mint mock USDC to the client
-//     await mintTo(
-//       provider.connection,
-//       payer,
-//       mint,
-//       clientATA.address,
-//       mintAuthority,
-//       1000 * 10 ** USDC_DECIMALS
-//     );
-//   });
-// });
+  async function initializeNewUser() {
+    await program.methods
+      .initializeUser()
+      .accounts({
+        userAccount: userPda,
+        user: user.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([user])
+      .rpc();
+  }
+
+  async function initializeMerchant() {
+    // Proceed with merchant initialization
+    [merchantPda] = await calculatePDA(program.programId, user, "merchant");
+
+    const nftIdentifier = {
+      merkle_tree_address: new anchor.web3.PublicKey(
+        "BPFLoaderUpgradeab1e11111111111111111111111"
+      ),
+      leaf_index: 123,
+    };
+
+    await program.methods
+      .initializeMerchant({
+        merkleTreeAddress: nftIdentifier.merkle_tree_address,
+        leafIndex: nftIdentifier.leaf_index,
+      })
+      .accounts({
+        merchantAccount: merchantPda,
+        userAccount: userPda,
+        user: user.publicKey,
+        state: stateAccount.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([user])
+      .rpc();
+  }
+
+  it("Add review for Merchant with ReviewWallet", async () => {
+    const review = 4;
+
+    try {
+      await program.methods
+        .addRating(review)
+        .accounts({
+          merchant: merchantPda,
+          state: stateAccount.publicKey,
+          signer: reviewWallet.publicKey,
+        })
+        .signers([reviewWallet])
+        .rpc();
+    } catch (error) {
+      console.error("Error when adding rating:", error);
+      throw error;
+    }
+
+    // Fetch and verify the added rate
+    const merchantAccount = await program.account.merchant.fetch(merchantPda);
+    console.log(merchantAccount.ratings[0]);
+  });
+
+  it("Should reject adding a review with an invalid rating", async () => {
+    const invalidRating = 6; // Rating outside the valid range (1-5)
+
+    try {
+      await program.methods
+        .addRating(invalidRating)
+        .accounts({
+          merchant: merchantPda,
+          state: stateAccount.publicKey,
+          signer: reviewWallet.publicKey,
+        })
+        .signers([reviewWallet])
+        .rpc();
+      throw new Error("Test should have thrown an error for invalid rating");
+    } catch (error) {
+      // Check if the error is the expected `InvalidRating` error
+      assert.include(
+        error.toString(),
+        "0x5",
+        "Expected an InvalidRating error (0x5)"
+      );
+    }
+  });
+
+  it("Should reject adding a review with an unauthorized signer", async () => {
+    const review = 4;
+    const unauthorizedSigner = anchor.web3.Keypair.generate(); // Generate a random keypair
+
+    try {
+      await program.methods
+        .addRating(review)
+        .accounts({
+          merchant: merchantPda,
+          state: stateAccount.publicKey,
+          signer: unauthorizedSigner.publicKey, // Using unauthorized signer
+        })
+        .signers([unauthorizedSigner])
+        .rpc();
+      throw new Error(
+        "Test should have thrown an error for unauthorized signer"
+      );
+    } catch (error) {
+      // Check if the error is the expected `Unauthorized` error
+      assert.include(
+        error.toString(),
+        "0x7",
+        "Expected an Unauthorized error (0x7)"
+      );
+    }
+  });
+});

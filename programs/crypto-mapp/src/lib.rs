@@ -25,9 +25,14 @@ pub mod crypto_mapp {
     use super::*;
     use anchor_lang::solana_program::entrypoint::ProgramResult;
 
-    pub fn initialize(ctx: Context<Initialize>, dao_pubkey: Pubkey) -> ProgramResult {
+    pub fn initialize(
+        ctx: Context<Initialize>,
+        dao_pubkey: Pubkey,
+        review_wallet_pubkey: Pubkey,
+    ) -> ProgramResult {
         let state = &mut ctx.accounts.state;
         state.dao_pubkey = dao_pubkey;
+        state.review_wallet_pubkey = review_wallet_pubkey;
         Ok(())
     }
 
@@ -56,8 +61,6 @@ pub mod crypto_mapp {
         ctx: Context<InitializeMerchantWithReferrer>,
         nft_identifier: CnftIdentifier,
     ) -> ProgramResult {
-        msg!("DEV: User: {}", ctx.accounts.user.to_account_info().key);
-
         merchant::initialize_merchant_with_referrer(ctx, nft_identifier)
     }
 
@@ -65,24 +68,23 @@ pub mod crypto_mapp {
         transaction::execute_transaction(ctx, amount)
     }
 
-    pub fn add_review(
-        ctx: Context<AddReview>,
-        transaction_id: Pubkey,
-        rating: u8,
-    ) -> ProgramResult {
-        review::add_review(ctx, transaction_id, rating)
+    pub fn add_rating(ctx: Context<AddRating>, rating: u8) -> ProgramResult {
+        msg!("Received rating: {}", rating);
+
+        review::add_rating(ctx, rating)
     }
 }
 
 #[account]
 pub struct ProgramState {
     dao_pubkey: Pubkey,
+    review_wallet_pubkey: Pubkey,
     merchant_counter: u32,
 }
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    #[account(init, payer = user, space = 8 + 40)] // Adjust the space as needed
+    #[account(init, payer = user, space = 76)] // Adjust the space as needed
     pub state: Account<'info, ProgramState>,
     #[account(mut)]
     pub user: Signer<'info>,

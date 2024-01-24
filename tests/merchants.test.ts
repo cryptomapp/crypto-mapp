@@ -12,7 +12,8 @@ describe("Merchant Functionality Tests", () => {
   const program = anchor.workspace.CryptoMapp as anchor.Program<CryptoMapp>;
 
   let stateAccount: anchor.web3.Keypair;
-  let dao: anchor.web3.Keypair;
+  let daoWallet: anchor.web3.Keypair;
+  let reviewWallet: anchor.web3.Keypair;
   let user: anchor.web3.Keypair;
   let userPda: anchor.web3.PublicKey;
   let referrer: anchor.web3.Keypair;
@@ -23,7 +24,8 @@ describe("Merchant Functionality Tests", () => {
     user = anchor.web3.Keypair.generate();
     referrer = anchor.web3.Keypair.generate();
     stateAccount = anchor.web3.Keypair.generate();
-    dao = anchor.web3.Keypair.generate();
+    daoWallet = anchor.web3.Keypair.generate();
+    reviewWallet = anchor.web3.Keypair.generate();
 
     await fundAccount(provider.connection, user);
     await fundAccount(provider.connection, referrer);
@@ -32,7 +34,13 @@ describe("Merchant Functionality Tests", () => {
     [userPda] = await calculatePDA(program.programId, user, "user");
     [referrerPda] = await calculatePDA(program.programId, referrer, "user");
 
-    await initializeState(program, stateAccount, user, dao.publicKey);
+    await initializeState(
+      program,
+      stateAccount,
+      user,
+      daoWallet.publicKey,
+      reviewWallet.publicKey
+    );
   });
 
   async function initializeNewUser() {
@@ -238,12 +246,11 @@ describe("Merchant Functionality Tests", () => {
         .rpc();
       throw new Error("Test should have failed with InvalidReferrer error");
     } catch (error) {
-      console.log(error.toString());
       // Expect the error to be an InvalidReferrer error
       assert.include(
         error.toString(),
-        "0x6",
-        "Expected an InvalidReferrer error (0x6)"
+        "0x2",
+        "Expected an ReferrerDoesNotExist error (0x2)"
       );
     }
   });
