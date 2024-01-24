@@ -69,8 +69,6 @@ pub mod crypto_mapp {
     }
 
     pub fn add_rating(ctx: Context<AddRating>, rating: u8) -> ProgramResult {
-        msg!("Received rating: {}", rating);
-
         review::add_rating(ctx, rating)
     }
 }
