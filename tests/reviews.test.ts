@@ -100,4 +100,55 @@ describe.only("Review Functionality Tests", () => {
     const merchantAccount = await program.account.merchant.fetch(merchantPda);
     console.log(merchantAccount.ratings[0]);
   });
+
+  it("Should reject adding a review with an invalid rating", async () => {
+    const invalidRating = 6; // Rating outside the valid range (1-5)
+
+    try {
+      await program.methods
+        .addRating(invalidRating)
+        .accounts({
+          merchant: merchantPda,
+          state: stateAccount.publicKey,
+          signer: reviewWallet.publicKey,
+        })
+        .signers([reviewWallet])
+        .rpc();
+      throw new Error("Test should have thrown an error for invalid rating");
+    } catch (error) {
+      // Check if the error is the expected `InvalidRating` error
+      assert.include(
+        error.toString(),
+        "0x5",
+        "Expected an InvalidRating error (0x5)"
+      );
+    }
+  });
+
+  it("Should reject adding a review with an unauthorized signer", async () => {
+    const review = 4;
+    const unauthorizedSigner = anchor.web3.Keypair.generate(); // Generate a random keypair
+
+    try {
+      await program.methods
+        .addRating(review)
+        .accounts({
+          merchant: merchantPda,
+          state: stateAccount.publicKey,
+          signer: unauthorizedSigner.publicKey, // Using unauthorized signer
+        })
+        .signers([unauthorizedSigner])
+        .rpc();
+      throw new Error(
+        "Test should have thrown an error for unauthorized signer"
+      );
+    } catch (error) {
+      // Check if the error is the expected `Unauthorized` error
+      assert.include(
+        error.toString(),
+        "0x7",
+        "Expected an Unauthorized error (0x7)"
+      );
+    }
+  });
 });
