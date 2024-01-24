@@ -29,11 +29,11 @@ pub fn initialize_merchant_with_referrer(
     ctx: Context<InitializeMerchantWithReferrer>,
     nft_identifier: CnftIdentifier,
 ) -> ProgramResult {
-    msg!("DEV: Welcome in hell");
     let state = &mut ctx.accounts.state;
     let merchant_account = &mut ctx.accounts.merchant_account;
     let user_account = &mut ctx.accounts.user_account;
     let referrer_account = &mut ctx.accounts.referrer_account;
+    let referrer_pubkey = ctx.accounts.referrer.key();
 
     // Set NFT identifier and mark merchant as initialized
     merchant_account.nft_identifier = nft_identifier;
@@ -48,9 +48,9 @@ pub fn initialize_merchant_with_referrer(
 
     // Logic to mint EXP to referrer
     match user_account.referrer {
-        Some(referrer_pubkey) => {
+        Some(ref_pubkey) => {
             // Validate that the provided referrer account matches the referrer public key in user_account
-            if referrer_pubkey == referrer_pubkey {
+            if ref_pubkey == referrer_pubkey {
                 // Add EXP points to referrer account
                 referrer_account.exp_points += 200;
             } else {
