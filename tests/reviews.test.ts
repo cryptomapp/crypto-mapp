@@ -3,7 +3,7 @@ import { assert } from "chai";
 import { CryptoMapp } from "../target/types/crypto_mapp";
 import { fundAccount, calculatePDA, initializeState } from "./test_setup";
 
-describe.only("Review Functionality Tests", () => {
+describe("Review Functionality Tests", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
   const program = anchor.workspace.CryptoMapp as anchor.Program<CryptoMapp>;

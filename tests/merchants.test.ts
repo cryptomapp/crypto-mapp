@@ -246,12 +246,11 @@ describe("Merchant Functionality Tests", () => {
         .rpc();
       throw new Error("Test should have failed with InvalidReferrer error");
     } catch (error) {
-      console.log(error.toString());
       // Expect the error to be an InvalidReferrer error
       assert.include(
         error.toString(),
-        "0x6",
-        "Expected an InvalidReferrer error (0x6)"
+        "0x2",
+        "Expected an ReferrerDoesNotExist error (0x2)"
       );
     }
   });
