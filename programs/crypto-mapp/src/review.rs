@@ -26,12 +26,8 @@ pub fn add_rating(ctx: Context<AddRating>, rating: u8) -> ProgramResult {
 pub struct AddRating<'info> {
     #[account(mut)]
     pub merchant: Account<'info, Merchant>,
-    #[account(constraint = state.review_wallet_pubkey == signer.key())]
-    // Ensure signer is review_wallet
+    #[account(mut)]
     pub state: Account<'info, ProgramState>,
-    /// CHECK: The `review_wallet` field represents the review wallet signer.
-    /// We check that the key of this account matches the known review wallet public key
-    /// to ensure that the caller is authorized to add ratings.
-    #[account(signer)]
-    pub signer: AccountInfo<'info>,
+    #[account(mut)]
+    pub signer: Signer<'info>,
 }
