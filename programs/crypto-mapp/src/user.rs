@@ -1,11 +1,13 @@
-use crate::ErrorCode;
+use crate::{ErrorCode, ProgramState};
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::entrypoint::ProgramResult;
 
-// Function to initialize a new user without a referrer
 pub fn initialize_user(ctx: Context<InitializeUser>) -> ProgramResult {
-    let user_account = &mut ctx.accounts.user_account;
+    if ctx.accounts.service_wallet.key() != ctx.accounts.state.users_wallet_pubkey {
+        return Err(ErrorCode::Unauthorized.into());
+    }
 
+    let user_account = &mut ctx.accounts.user_account;
     user_account.is_initialized = true;
     user_account.exp_points = 100;
     user_account.referrer = None;
@@ -15,6 +17,9 @@ pub fn initialize_user(ctx: Context<InitializeUser>) -> ProgramResult {
 
 // Function to initialize a new user with a referrer
 pub fn initialize_user_with_referrer(ctx: Context<InitializeUserWithReferrer>) -> ProgramResult {
+    if ctx.accounts.service_wallet.key() != ctx.accounts.state.users_wallet_pubkey {
+        return Err(ErrorCode::Unauthorized.into());
+    }
     let user_account = &mut ctx.accounts.user_account;
     let referrer_account = &mut ctx.accounts.referrer_account;
 
@@ -52,23 +57,30 @@ pub struct CheckUserExists<'info> {
 
 #[derive(Accounts)]
 pub struct InitializeUser<'info> {
-    #[account(init, payer = user, space = 8 + 1 + 4 + 33 + 10, seeds = [b"user".as_ref(), user.key().as_ref()], bump)]
+    #[account(init, payer = service_wallet, space = 8 + 1 + 4 + 33 + 10,
+         seeds = [b"user".as_ref(), user_pubkey.key().as_ref()], bump)]
     pub user_account: Account<'info, User>,
+    /// CHECK: This is checked in the program logic
+    pub user_pubkey: AccountInfo<'info>,
     #[account(mut)]
-    pub user: Signer<'info>,
+    pub service_wallet: Signer<'info>,
+    pub state: Account<'info, ProgramState>,
     pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
 pub struct InitializeUserWithReferrer<'info> {
-    #[account(init, payer = user, space = 8 + 1 + 4 + 33 + 10, seeds = [b"user".as_ref(), user.key().as_ref()], bump)]
+    #[account(init, payer = service_wallet, space = 8 + 1 + 4 + 33 + 10, 
+        seeds = [b"user".as_ref(), user_pubkey.key().as_ref()], bump)]
     pub user_account: Account<'info, User>,
     #[account(mut, seeds = [b"user".as_ref(), referrer.key().as_ref()], bump)]
     pub referrer_account: Account<'info, User>,
-    #[account(mut)]
-    pub user: Signer<'info>,
+    /// CHECK: This is checked in the program logic
+    pub user_pubkey: AccountInfo<'info>,
     /// CHECK: The referrer's public key is used only for deriving the PDA of the referrer_account account.
-    /// We don't need to impose any constraints on the account itself because we're only using the key.
     pub referrer: AccountInfo<'info>,
+    #[account(mut)]
+    pub service_wallet: Signer<'info>,
+    pub state: Account<'info, ProgramState>,
     pub system_program: Program<'info, System>,
 }

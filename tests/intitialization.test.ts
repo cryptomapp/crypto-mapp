@@ -45,5 +45,6 @@ describe("Program Initialization Tests", () => {
       state.reviewWalletPubkey.equals(testReviewWalletPubkey),
       "Review wallet public key should be set correctly in the program state"
     );
+    assert.ok(state.merchantCounter == 0);
   });
 });

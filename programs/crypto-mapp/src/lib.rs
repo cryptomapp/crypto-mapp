@@ -11,7 +11,7 @@ use crate::user::*;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program_error::ProgramError;
 
-declare_id!("2fN9ZMRnTB3MHi3oT3HFJcReY7jTJDDhoQNFKrbTKTTe");
+declare_id!("8mDhNcko1rByfWLzVTuddx386JFwFnD3oDPWV2pzBckN");
 
 impl From<ErrorCode> for ProgramError {
     fn from(e: ErrorCode) -> ProgramError {
@@ -28,11 +28,14 @@ pub mod crypto_mapp {
     pub fn initialize(
         ctx: Context<Initialize>,
         dao_pubkey: Pubkey,
-        review_wallet_pubkey: Pubkey,
+        users_wallet_pubkey: Pubkey,
+        reviews_wallet_pubkey: Pubkey,
     ) -> ProgramResult {
         let state = &mut ctx.accounts.state;
+        state.merchant_counter = 0;
         state.dao_pubkey = dao_pubkey;
-        state.review_wallet_pubkey = review_wallet_pubkey;
+        state.users_wallet_pubkey = users_wallet_pubkey;
+        state.reviews_wallet_pubkey = reviews_wallet_pubkey;
         Ok(())
     }
 
@@ -76,13 +79,14 @@ pub mod crypto_mapp {
 #[account]
 pub struct ProgramState {
     dao_pubkey: Pubkey,
-    review_wallet_pubkey: Pubkey,
+    users_wallet_pubkey: Pubkey,
+    reviews_wallet_pubkey: Pubkey,
     merchant_counter: u32,
 }
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    #[account(init, payer = user, space = 76)] // Adjust the space as needed
+    #[account(init, payer = user, space = 32 + 32 + 32 + 4)]
     pub state: Account<'info, ProgramState>,
     #[account(mut)]
     pub user: Signer<'info>,
