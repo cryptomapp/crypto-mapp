@@ -13,8 +13,11 @@ describe("Program Initialization Tests", () => {
   const testDaoKeypair = Keypair.generate();
   const testDaoPubkey = testDaoKeypair.publicKey;
 
-  const testReviewWalletKeypair = Keypair.generate();
-  const testReviewWalletPubkey = testReviewWalletKeypair.publicKey;
+  const testReviewsWalletKeypair = Keypair.generate();
+  const testReviewsWalletPubkey = testReviewsWalletKeypair.publicKey;
+
+  const testUsersWalletKeypair = Keypair.generate();
+  const testUsersWalletPubkey = testUsersWalletKeypair.publicKey;
 
   it("initializes the program state with the test DAO public key", async () => {
     // Generate a new keypair for the program state account
@@ -22,7 +25,7 @@ describe("Program Initialization Tests", () => {
 
     // Send a transaction to initialize the program state
     await program.methods
-      .initialize(testDaoPubkey, testReviewWalletPubkey)
+      .initialize(testDaoPubkey, testUsersWalletPubkey, testReviewsWalletPubkey)
       .accounts({
         state: programStateAccount.publicKey,
         user: provider.wallet.publicKey,
@@ -42,7 +45,11 @@ describe("Program Initialization Tests", () => {
       "DAO public key should be set correctly in the program state"
     );
     assert.ok(
-      state.reviewWalletPubkey.equals(testReviewWalletPubkey),
+      state.usersWalletPubkey.equals(testUsersWalletPubkey),
+      "Users wallet public key should be set correctly in the program state"
+    );
+    assert.ok(
+      state.reviewsWalletPubkey.equals(testReviewsWalletPubkey),
       "Review wallet public key should be set correctly in the program state"
     );
     assert.ok(state.merchantCounter == 0);

@@ -10,6 +10,7 @@ describe("Review Functionality Tests", () => {
 
   let stateAccount: anchor.web3.Keypair;
   let daoWallet: anchor.web3.Keypair;
+  let userWallet: anchor.web3.Keypair;
   let reviewWallet: anchor.web3.Keypair;
   let user: anchor.web3.Keypair;
   let userPda: anchor.web3.PublicKey;
@@ -19,10 +20,13 @@ describe("Review Functionality Tests", () => {
     user = anchor.web3.Keypair.generate();
     stateAccount = anchor.web3.Keypair.generate();
     daoWallet = anchor.web3.Keypair.generate();
+    userWallet = anchor.web3.Keypair.generate();
     reviewWallet = anchor.web3.Keypair.generate();
 
     await fundAccount(provider.connection, user);
     await fundAccount(provider.connection, stateAccount);
+    await fundAccount(provider.connection, daoWallet);
+    await fundAccount(provider.connection, userWallet);
     await fundAccount(provider.connection, reviewWallet);
 
     [userPda] = await calculatePDA(program.programId, user, "user");
@@ -32,6 +36,7 @@ describe("Review Functionality Tests", () => {
       stateAccount,
       user,
       daoWallet.publicKey,
+      userWallet.publicKey,
       reviewWallet.publicKey
     );
 
@@ -44,10 +49,12 @@ describe("Review Functionality Tests", () => {
       .initializeUser()
       .accounts({
         userAccount: userPda,
-        user: user.publicKey,
+        userPubkey: user.publicKey,
+        serviceWallet: userWallet.publicKey,
+        state: stateAccount.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([user])
+      .signers([userWallet])
       .rpc();
   }
 

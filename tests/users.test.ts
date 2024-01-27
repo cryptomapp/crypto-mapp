@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
 import { CryptoMapp } from "../target/types/crypto_mapp";
-import { fundAccount, calculatePDA } from "./test_setup";
+import { fundAccount, calculatePDA, initializeState } from "./test_setup";
 
 describe("User Functionality Tests", () => {
   const provider = anchor.AnchorProvider.env();
@@ -10,11 +10,34 @@ describe("User Functionality Tests", () => {
 
   let user: anchor.web3.Keypair;
   let userPda: anchor.web3.PublicKey;
+  let state: anchor.web3.Keypair;
+  let daoWallet: anchor.web3.Keypair;
+  let userWallet: anchor.web3.Keypair;
+  let reviewWallet: anchor.web3.Keypair;
 
   beforeEach(async () => {
     user = anchor.web3.Keypair.generate();
+    state = anchor.web3.Keypair.generate();
+    daoWallet = anchor.web3.Keypair.generate();
+    userWallet = anchor.web3.Keypair.generate();
+    reviewWallet = anchor.web3.Keypair.generate();
+
     await fundAccount(provider.connection, user);
+    await fundAccount(provider.connection, state);
+    await fundAccount(provider.connection, daoWallet);
+    await fundAccount(provider.connection, userWallet);
+    await fundAccount(provider.connection, reviewWallet);
+
     [userPda] = await calculatePDA(program.programId, user, "user");
+
+    await initializeState(
+      program,
+      state,
+      user,
+      daoWallet.publicKey,
+      userWallet.publicKey,
+      reviewWallet.publicKey
+    );
   });
 
   async function initializeNewUser() {
@@ -22,24 +45,30 @@ describe("User Functionality Tests", () => {
       .initializeUser()
       .accounts({
         userAccount: userPda,
-        user: user.publicKey,
+        userPubkey: user.publicKey,
+        serviceWallet: userWallet.publicKey,
+        state: state.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([user])
+      .signers([userWallet])
       .rpc();
   }
 
   it("Initializes a new user", async () => {
     await initializeNewUser();
 
-    // Fetch the UserExp account
-    const userExpAccount = await program.account.user.fetch(userPda);
+    // Fetch the User account
+    const userAccount = await program.account.user.fetch(userPda);
 
     // Assertions
     assert.equal(
-      userExpAccount.expPoints,
+      userAccount.expPoints,
       100,
       "User should have 100 EXP points after initialization"
+    );
+    assert.isTrue(
+      userAccount.isInitialized,
+      "User should be marked as initialized"
     );
   });
 
@@ -68,17 +97,16 @@ describe("User Functionality Tests", () => {
       "user"
     );
 
-    console.log("UserPda:", userPda.toBase58());
-    console.log("ReferrerPda:", referrerPda.toBase58());
-
     await program.methods
       .initializeUser()
       .accounts({
         userAccount: referrerPda,
-        user: referrer.publicKey,
+        userPubkey: referrer.publicKey,
+        serviceWallet: userWallet.publicKey,
+        state: state.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([referrer])
+      .signers([userWallet])
       .rpc();
 
     // Initialize a new user with the referrer
@@ -86,12 +114,14 @@ describe("User Functionality Tests", () => {
       .initializeUserWithReferrer()
       .accounts({
         userAccount: userPda,
-        user: user.publicKey,
+        userPubkey: user.publicKey,
         referrerAccount: referrerPda,
         referrer: referrer.publicKey,
+        serviceWallet: userWallet.publicKey,
+        state: state.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([user])
+      .signers([userWallet])
       .rpc();
 
     // Fetch and verify the accounts
@@ -127,10 +157,12 @@ describe("User Functionality Tests", () => {
       .initializeUser()
       .accounts({
         userAccount: newuserPda,
-        user: newUser.publicKey,
+        userPubkey: newUser.publicKey,
+        serviceWallet: userWallet.publicKey,
+        state: state.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([newUser])
+      .signers([userWallet])
       .rpc();
 
     // Fetch the UserExp account to confirm initialization
@@ -147,10 +179,12 @@ describe("User Functionality Tests", () => {
         .initializeUser()
         .accounts({
           userAccount: newuserPda,
-          user: newUser.publicKey,
+          userPubkey: newUser.publicKey,
+          serviceWallet: userWallet.publicKey,
+          state: state.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
         })
-        .signers([newUser])
+        .signers([userWallet])
         .rpc();
 
       assert.fail("Reinitialization did not fail as expected");

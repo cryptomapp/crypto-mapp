@@ -86,7 +86,7 @@ pub struct ProgramState {
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    #[account(init, payer = user, space = 32 + 32 + 32 + 4)]
+    #[account(init, payer = user, space = 32 + 32 + 32 + 4 + 8)]
     pub state: Account<'info, ProgramState>,
     #[account(mut)]
     pub user: Signer<'info>,

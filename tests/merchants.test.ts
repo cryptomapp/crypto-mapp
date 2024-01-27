@@ -17,6 +17,7 @@ describe("Merchant Functionality Tests", () => {
 
   let stateAccount: anchor.web3.Keypair;
   let daoWallet: anchor.web3.Keypair;
+  let userWallet: anchor.web3.Keypair;
   let reviewWallet: anchor.web3.Keypair;
   let user: anchor.web3.Keypair;
   let userPda: anchor.web3.PublicKey;
@@ -29,11 +30,15 @@ describe("Merchant Functionality Tests", () => {
     referrer = anchor.web3.Keypair.generate();
     stateAccount = anchor.web3.Keypair.generate();
     daoWallet = anchor.web3.Keypair.generate();
+    userWallet = anchor.web3.Keypair.generate();
     reviewWallet = anchor.web3.Keypair.generate();
 
     await fundAccount(provider.connection, user);
     await fundAccount(provider.connection, referrer);
     await fundAccount(provider.connection, stateAccount);
+    await fundAccount(provider.connection, daoWallet);
+    await fundAccount(provider.connection, userWallet);
+    await fundAccount(provider.connection, reviewWallet);
 
     [userPda] = await calculatePDA(program.programId, user, "user");
     [referrerPda] = await calculatePDA(program.programId, referrer, "user");
@@ -43,6 +48,7 @@ describe("Merchant Functionality Tests", () => {
       stateAccount,
       user,
       daoWallet.publicKey,
+      userWallet.publicKey,
       reviewWallet.publicKey
     );
   });
@@ -52,10 +58,12 @@ describe("Merchant Functionality Tests", () => {
       .initializeUser()
       .accounts({
         userAccount: userPda,
-        user: user.publicKey,
+        userPubkey: user.publicKey,
+        state: stateAccount.publicKey,
+        serviceWallet: userWallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([user])
+      .signers([userWallet])
       .rpc();
   }
 
@@ -64,10 +72,12 @@ describe("Merchant Functionality Tests", () => {
       .initializeUser()
       .accounts({
         userAccount: referrerPda,
-        user: referrer.publicKey,
+        userPubkey: referrer.publicKey,
+        state: stateAccount.publicKey,
+        serviceWallet: userWallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([referrer])
+      .signers([userWallet])
       .rpc();
   }
 
@@ -123,12 +133,14 @@ describe("Merchant Functionality Tests", () => {
       .initializeUserWithReferrer()
       .accounts({
         userAccount: userPda,
-        user: user.publicKey,
+        userPubkey: user.publicKey,
         referrerAccount: referrerPda,
         referrer: referrer.publicKey,
+        serviceWallet: userWallet.publicKey,
+        state: stateAccount.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([user])
+      .signers([userWallet])
       .rpc();
 
     // Log the referrer set in the user's account
@@ -183,10 +195,12 @@ describe("Merchant Functionality Tests", () => {
       .initializeUser()
       .accounts({
         userAccount: user2Pda,
-        user: user2.publicKey,
+        userPubkey: user2.publicKey,
+        serviceWallet: userWallet.publicKey,
+        state: stateAccount.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([user2])
+      .signers([userWallet])
       .rpc();
 
     // Initialize a potential invalid referrer
@@ -201,10 +215,12 @@ describe("Merchant Functionality Tests", () => {
       .initializeUser()
       .accounts({
         userAccount: invalidReferrerPda,
-        user: invalidReferrer.publicKey,
+        userPubkey: invalidReferrer.publicKey,
+        serviceWallet: userWallet.publicKey,
+        state: stateAccount.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([invalidReferrer])
+      .signers([userWallet])
       .rpc();
 
     // Attempt to initialize merchant with the invalid referrer
@@ -275,12 +291,14 @@ describe("Merchant Functionality Tests", () => {
       .initializeUserWithReferrer()
       .accounts({
         userAccount: userPda,
-        user: user.publicKey,
+        userPubkey: user.publicKey,
         referrerAccount: referrerPda,
         referrer: referrer.publicKey,
+        serviceWallet: userWallet.publicKey,
+        state: stateAccount.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([user])
+      .signers([userWallet])
       .rpc();
 
     // Log the referrer set in the user's account
