@@ -13,6 +13,7 @@ describe("User Functionality Tests", () => {
   let state: anchor.web3.Keypair;
   let daoWallet: anchor.web3.Keypair;
   let userWallet: anchor.web3.Keypair;
+  let merchantWallet: anchor.web3.Keypair;
   let reviewWallet: anchor.web3.Keypair;
 
   beforeEach(async () => {
@@ -20,6 +21,7 @@ describe("User Functionality Tests", () => {
     state = anchor.web3.Keypair.generate();
     daoWallet = anchor.web3.Keypair.generate();
     userWallet = anchor.web3.Keypair.generate();
+    merchantWallet = anchor.web3.Keypair.generate();
     reviewWallet = anchor.web3.Keypair.generate();
 
     await fundAccount(provider.connection, user);
@@ -36,6 +38,7 @@ describe("User Functionality Tests", () => {
       user,
       daoWallet.publicKey,
       userWallet.publicKey,
+      merchantWallet.publicKey,
       reviewWallet.publicKey
     );
   });

@@ -29,12 +29,14 @@ pub mod crypto_mapp {
         ctx: Context<Initialize>,
         dao_pubkey: Pubkey,
         users_wallet_pubkey: Pubkey,
+        merchants_wallet_pubkey: Pubkey,
         reviews_wallet_pubkey: Pubkey,
     ) -> ProgramResult {
         let state = &mut ctx.accounts.state;
         state.merchant_counter = 0;
         state.dao_pubkey = dao_pubkey;
         state.users_wallet_pubkey = users_wallet_pubkey;
+        state.merchants_wallet_pubkey = merchants_wallet_pubkey;
         state.reviews_wallet_pubkey = reviews_wallet_pubkey;
         Ok(())
     }
@@ -80,13 +82,14 @@ pub mod crypto_mapp {
 pub struct ProgramState {
     dao_pubkey: Pubkey,
     users_wallet_pubkey: Pubkey,
+    merchants_wallet_pubkey: Pubkey,
     reviews_wallet_pubkey: Pubkey,
     merchant_counter: u32,
 }
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    #[account(init, payer = user, space = 32 + 32 + 32 + 4 + 8)]
+    #[account(init, payer = user, space = 32 + 32 + 32 + 32 + 4 + 8)]
     pub state: Account<'info, ProgramState>,
     #[account(mut)]
     pub user: Signer<'info>,

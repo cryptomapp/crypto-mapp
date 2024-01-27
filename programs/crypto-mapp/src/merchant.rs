@@ -9,6 +9,10 @@ pub fn initialize_merchant(
     ctx: Context<InitializeMerchant>,
     nft_identifier: CnftIdentifier,
 ) -> ProgramResult {
+    if ctx.accounts.service_wallet.key() != ctx.accounts.state.merchants_wallet_pubkey {
+        return Err(ErrorCode::Unauthorized.into());
+    }
+
     let state = &mut ctx.accounts.state;
     let merchant_account = &mut ctx.accounts.merchant_account;
     let user_account = &mut ctx.accounts.user_account;
@@ -29,6 +33,10 @@ pub fn initialize_merchant_with_referrer(
     ctx: Context<InitializeMerchantWithReferrer>,
     nft_identifier: CnftIdentifier,
 ) -> ProgramResult {
+    if ctx.accounts.service_wallet.key() != ctx.accounts.state.merchants_wallet_pubkey {
+        return Err(ErrorCode::Unauthorized.into());
+    }
+
     let state = &mut ctx.accounts.state;
     let merchant_account = &mut ctx.accounts.merchant_account;
     let user_account = &mut ctx.accounts.user_account;
@@ -83,13 +91,15 @@ pub struct CnftIdentifier {
 
 #[derive(Accounts)]
 pub struct InitializeMerchant<'info> {
-    #[account(init, payer = user, space = 8 + mem::size_of::<Merchant>() + MAX_REVIEWS * mem::size_of::<u8>(),
-     seeds = [b"merchant".as_ref(), user.key().as_ref()], bump)]
+    #[account(init, payer = service_wallet, space = 8 + mem::size_of::<Merchant>() + MAX_REVIEWS * mem::size_of::<u8>(),
+     seeds = [b"merchant".as_ref(), user_pubkey.key().as_ref()], bump)]
     pub merchant_account: Account<'info, Merchant>,
     #[account(mut)]
     pub user_account: Account<'info, User>,
+    /// CHECK: This is checked in the program logic
+    pub user_pubkey: AccountInfo<'info>,
     #[account(mut)]
-    pub user: Signer<'info>,
+    pub service_wallet: Signer<'info>,
     #[account(mut)]
     pub state: Account<'info, ProgramState>,
     pub system_program: Program<'info, System>,
@@ -97,13 +107,15 @@ pub struct InitializeMerchant<'info> {
 
 #[derive(Accounts)]
 pub struct InitializeMerchantWithReferrer<'info> {
-    #[account(init, payer = user, space = 8 + mem::size_of::<Merchant>() + MAX_REVIEWS * mem::size_of::<u8>(),
-     seeds = [b"merchant".as_ref(), user.key().as_ref()], bump)]
+    #[account(init, payer = service_wallet, space = 8 + mem::size_of::<Merchant>() + MAX_REVIEWS * mem::size_of::<u8>(),
+     seeds = [b"merchant".as_ref(), user_pubkey.key().as_ref()], bump)]
     pub merchant_account: Account<'info, Merchant>,
     #[account(mut)]
     pub user_account: Account<'info, User>,
+    /// CHECK: This is checked in the program logic
+    pub user_pubkey: AccountInfo<'info>,
     #[account(mut)]
-    pub user: Signer<'info>,
+    pub service_wallet: Signer<'info>,
     #[account(mut)]
     pub state: Account<'info, ProgramState>,
     pub system_program: Program<'info, System>,

@@ -14,10 +14,11 @@ export async function initializeState(
   payer: Keypair,
   daoPubkey: PublicKey,
   userPubkey: PublicKey,
+  merchantPubkey: PublicKey,
   reviewPubkey: PublicKey
 ): Promise<void> {
   await program.methods
-    .initialize(daoPubkey, userPubkey, reviewPubkey)
+    .initialize(daoPubkey, userPubkey, merchantPubkey, reviewPubkey)
     .accounts({
       state: stateAccount.publicKey,
       user: payer.publicKey,

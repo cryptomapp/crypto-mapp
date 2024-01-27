@@ -3,7 +3,7 @@ import { assert } from "chai";
 import { CryptoMapp } from "../target/types/crypto_mapp";
 import { fundAccount, calculatePDA, initializeState } from "./test_setup";
 
-describe("Merchant Functionality Tests", () => {
+describe.only("Merchant Functionality Tests", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
   const program = anchor.workspace.CryptoMapp as anchor.Program<CryptoMapp>;
@@ -18,6 +18,7 @@ describe("Merchant Functionality Tests", () => {
   let stateAccount: anchor.web3.Keypair;
   let daoWallet: anchor.web3.Keypair;
   let userWallet: anchor.web3.Keypair;
+  let merchantWallet: anchor.web3.Keypair;
   let reviewWallet: anchor.web3.Keypair;
   let user: anchor.web3.Keypair;
   let userPda: anchor.web3.PublicKey;
@@ -31,6 +32,7 @@ describe("Merchant Functionality Tests", () => {
     stateAccount = anchor.web3.Keypair.generate();
     daoWallet = anchor.web3.Keypair.generate();
     userWallet = anchor.web3.Keypair.generate();
+    merchantWallet = anchor.web3.Keypair.generate();
     reviewWallet = anchor.web3.Keypair.generate();
 
     await fundAccount(provider.connection, user);
@@ -38,6 +40,7 @@ describe("Merchant Functionality Tests", () => {
     await fundAccount(provider.connection, stateAccount);
     await fundAccount(provider.connection, daoWallet);
     await fundAccount(provider.connection, userWallet);
+    await fundAccount(provider.connection, merchantWallet);
     await fundAccount(provider.connection, reviewWallet);
 
     [userPda] = await calculatePDA(program.programId, user, "user");
@@ -49,6 +52,7 @@ describe("Merchant Functionality Tests", () => {
       user,
       daoWallet.publicKey,
       userWallet.publicKey,
+      merchantWallet.publicKey,
       reviewWallet.publicKey
     );
   });
@@ -93,11 +97,12 @@ describe("Merchant Functionality Tests", () => {
       .accounts({
         merchantAccount: merchantPda,
         userAccount: userPda,
-        user: user.publicKey,
+        userPubkey: user.publicKey,
+        serviceWallet: merchantWallet.publicKey,
         state: stateAccount.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([user])
+      .signers([merchantWallet])
       .rpc();
   }
 
@@ -164,13 +169,14 @@ describe("Merchant Functionality Tests", () => {
         .accounts({
           merchantAccount: merchantPda,
           userAccount: userPda,
+          userPubkey: user.publicKey,
+          serviceWallet: merchantWallet.publicKey,
           referrer: referrer.publicKey,
-          user: user.publicKey,
           referrerAccount: referrerPda,
           state: stateAccount.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
         })
-        .signers([user])
+        .signers([merchantWallet])
         .rpc();
     } catch (error) {
       console.error("Error initializing merchant with referrer:", error);
@@ -235,13 +241,14 @@ describe("Merchant Functionality Tests", () => {
         .accounts({
           merchantAccount: merchantPda,
           userAccount: user2Pda,
-          user: user2.publicKey,
+          userPubkey: user2.publicKey,
+          serviceWallet: merchantWallet.publicKey,
           referrer: invalidReferrer.publicKey,
           referrerAccount: invalidReferrerPda,
           state: stateAccount.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
         })
-        .signers([user2])
+        .signers([merchantWallet])
         .rpc();
       throw new Error("Test should have failed with InvalidReferrer error");
     } catch (error) {
@@ -326,15 +333,16 @@ describe("Merchant Functionality Tests", () => {
           leafIndex: nftIdentifier.leaf_index,
         })
         .accounts({
-          merchantAccount: merchantPda,
           userAccount: userPda,
-          referrer: referrer.publicKey,
-          user: user.publicKey,
+          merchantAccount: merchantPda,
+          userPubkey: user.publicKey,
           referrerAccount: referrerPda,
+          referrer: referrer.publicKey,
+          serviceWallet: merchantWallet.publicKey,
           state: stateAccount.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
         })
-        .signers([user])
+        .signers([merchantWallet])
         .rpc();
     } catch (error) {
       console.error("Error initializing merchant with referrer:", error);

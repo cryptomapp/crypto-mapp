@@ -27,18 +27,26 @@ async function main() {
   const daoPubkey = new PublicKey(
     "HyZWBzi5EH9mm7FFhpAHQArm5JyY1KPeWgSxMN6YZdJy"
   );
-  const reviewWalletPubkey = new PublicKey(
+  const usersWalletPubkey = new PublicKey(
+    "HyZWBzi5EH9mm7FFhpAHQArm5JyY1KPeWgSxMN6YZdJy"
+  );
+  const reviewsWalletPubkey = new PublicKey(
     "HyZWBzi5EH9mm7FFhpAHQArm5JyY1KPeWgSxMN6YZdJy"
   );
 
-  await program.rpc.initialize(daoPubkey, reviewWalletPubkey, {
-    accounts: {
-      state: programState.publicKey,
-      user: provider.wallet.publicKey,
-      systemProgram: SystemProgram.programId,
-    },
-    signers: [programState],
-  });
+  await program.rpc.initialize(
+    daoPubkey,
+    usersWalletPubkey,
+    reviewsWalletPubkey,
+    {
+      accounts: {
+        state: programState.publicKey,
+        user: provider.wallet.publicKey,
+        systemProgram: SystemProgram.programId,
+      },
+      signers: [programState],
+    }
+  );
 
   // Fetch the state of the account
   const stateAccount = await program.account.programState.fetch(
@@ -47,21 +55,15 @@ async function main() {
 
   console.log("programState: ", programState.publicKey);
 
-  // Fetch and print the raw byte array of the program state account
-  const rawAccountInfo = await provider.connection.getAccountInfo(
-    programState.publicKey
-  );
-  if (rawAccountInfo && rawAccountInfo.data) {
-    console.log("Raw Account Data:", rawAccountInfo.data.toJSON());
-  } else {
-    console.log("No data found in the account");
-  }
-
   // Print values from the state
   console.log("DAO Public Key:", stateAccount.daoPubkey.toString());
   console.log(
+    "User Wallet Public Key:",
+    stateAccount.usersWalletPubkey.toString()
+  );
+  console.log(
     "Review Wallet Public Key:",
-    stateAccount.reviewWalletPubkey.toString()
+    stateAccount.reviewsWalletPubkey.toString()
   );
   console.log("Merchant Counter:", stateAccount.merchantCounter);
 }
