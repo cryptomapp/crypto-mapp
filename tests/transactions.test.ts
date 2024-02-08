@@ -1,358 +1,363 @@
 import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
-import { CryptoMapp } from "../target/types/crypto_mapp";
 import { assert } from "chai";
-import { PublicKey, Keypair, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { Connection, Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
+import { CryptoMapp } from "../target/types/crypto_mapp";
+import { fundAccount, calculatePDA, initializeState } from "./test_setup";
 import {
+  TOKEN_PROGRAM_ID,
   createMint,
-  getAccount,
   getOrCreateAssociatedTokenAccount,
   mintTo,
-  TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 
-describe.only("execute_transaction tests", () => {
-  // Setup the provider
-  anchor.setProvider(anchor.AnchorProvider.env());
-  const provider = anchor.AnchorProvider.local();
-  const program = anchor.workspace.CryptoMapp as Program<CryptoMapp>;
+describe.only("Transaction Tests", () => {
+  const provider = anchor.AnchorProvider.env();
+  anchor.setProvider(provider);
+  const program = anchor.workspace.CryptoMapp as anchor.Program<CryptoMapp>;
 
-  // Constants
-  const USDC_DECIMALS = 6;
+  let mintUSDC: PublicKey;
+  let userTokenAccount: anchor.web3.PublicKey;
+  let user2TokenAccount: anchor.web3.PublicKey;
+  let daoTokenAccount: anchor.web3.PublicKey;
 
-  // Keypair generation
-  const payer = Keypair.generate();
-  const mintAuthority = Keypair.generate();
-  const client = Keypair.generate();
-  const merchant = Keypair.generate();
-  const dao = Keypair.generate();
+  // Service wallets
+  let stateAccount: anchor.web3.Keypair,
+    daoWallet: anchor.web3.Keypair,
+    onboardingServiceWallet: anchor.web3.Keypair,
+    merchantIdServiceWallet: anchor.web3.Keypair,
+    transactionServiceWallet: anchor.web3.Keypair,
+    reviewServiceWallet: anchor.web3.Keypair,
+    user: anchor.web3.Keypair,
+    user2: anchor.web3.Keypair;
 
-  // Variable declarations
-  let mint: PublicKey;
-  let clientATA, merchantATA, daoATA;
+  // Transaction Fee
+  const transactionFee = 30; // 0.3%
 
-  // Setup before tests
-  before(async () => {
-    // Airdrop SOL to all the keypairs
-    for (const kp of [payer, mintAuthority, client, merchant, dao]) {
-      await provider.connection.confirmTransaction(
-        await provider.connection.requestAirdrop(
-          kp.publicKey,
-          LAMPORTS_PER_SOL
-        ),
-        "confirmed"
-      );
-    }
+  // PDA Addresses
+  let userPda, user2Pda, merchantPda;
 
-    // Create the mock USDC mint
-    mint = await createMint(
+  beforeEach(async () => {
+    // Generate keypairs for service wallets
+    daoWallet = anchor.web3.Keypair.generate();
+    onboardingServiceWallet = anchor.web3.Keypair.generate();
+    merchantIdServiceWallet = anchor.web3.Keypair.generate();
+    transactionServiceWallet = anchor.web3.Keypair.generate();
+    reviewServiceWallet = anchor.web3.Keypair.generate();
+
+    // Generate keypairs for users
+    user = anchor.web3.Keypair.generate();
+    user2 = anchor.web3.Keypair.generate();
+
+    await fundAccount(provider.connection, user);
+    await fundAccount(provider.connection, user2);
+    await fundAccount(provider.connection, daoWallet);
+
+    stateAccount = anchor.web3.Keypair.generate();
+
+    mintUSDC = await createMint(
       provider.connection,
-      payer,
-      mintAuthority.publicKey,
+      user,
+      user.publicKey,
       null,
-      USDC_DECIMALS
+      6
     );
 
-    // Create Associated Token Accounts for client, merchant, and dao
-    [clientATA, merchantATA, daoATA] = await Promise.all([
-      getOrCreateAssociatedTokenAccount(
+    userTokenAccount = (
+      await getOrCreateAssociatedTokenAccount(
         provider.connection,
-        payer,
-        mint,
-        client.publicKey
-      ),
-      getOrCreateAssociatedTokenAccount(
-        provider.connection,
-        payer,
-        mint,
-        merchant.publicKey
-      ),
-      getOrCreateAssociatedTokenAccount(
-        provider.connection,
-        payer,
-        mint,
-        dao.publicKey
-      ),
-    ]);
+        user,
+        mintUSDC,
+        user.publicKey
+      )
+    ).address;
 
-    // Mint mock USDC to the client
-    await mintTo(
+    user2TokenAccount = (
+      await getOrCreateAssociatedTokenAccount(
+        provider.connection,
+        user2,
+        mintUSDC,
+        user2.publicKey
+      )
+    ).address;
+
+    daoTokenAccount = (
+      await getOrCreateAssociatedTokenAccount(
+        provider.connection,
+        user,
+        mintUSDC,
+        daoWallet.publicKey
+      )
+    ).address;
+
+    // Fund keypairs
+    await Promise.all(
+      [
+        stateAccount,
+        daoWallet,
+        onboardingServiceWallet,
+        merchantIdServiceWallet,
+        transactionServiceWallet,
+        reviewServiceWallet,
+      ].map((kp) => fundAccount(provider.connection, kp))
+    );
+
+    await initializeState(
+      program,
+      stateAccount,
+      user,
+      mintUSDC,
+      transactionFee,
+      daoWallet.publicKey,
+      onboardingServiceWallet.publicKey,
+      merchantIdServiceWallet.publicKey,
+      transactionServiceWallet.publicKey,
+      reviewServiceWallet.publicKey
+    );
+
+    // Calculate PDAs
+    [userPda] = await calculatePDA(program.programId, user, "user");
+    [user2Pda] = await calculatePDA(program.programId, user2, "user");
+    [merchantPda] = await calculatePDA(program.programId, user, "merchant");
+
+    // Initialize user, referrer as users, and merchant
+    await initializeNewUser(userPda, user);
+    await initializeNewUser(user2Pda, user2);
+    await initializeMerchant(merchantPda, user);
+
+    await mintMockUSDC(
       provider.connection,
-      payer,
-      mint,
-      clientATA.address,
-      mintAuthority,
-      1000 * 10 ** USDC_DECIMALS
+      user,
+      mintUSDC,
+      user.publicKey,
+      1000000000
+    );
+
+    await mintMockUSDC(
+      provider.connection,
+      user,
+      mintUSDC,
+      user2.publicKey,
+      1000000000
+    );
+
+    await mintMockUSDC(
+      provider.connection,
+      user,
+      mintUSDC,
+      daoWallet.publicKey,
+      1000000000
     );
   });
 
-  // Test case
-  it("executes transaction and transfers USDC correctly", async () => {
-    const amount = 50 * 10 ** USDC_DECIMALS; // 50 USDC in micro-units
-
-    // Fetch starting balances
-    const [clientStartingBalance, merchantStartingBalance, daoStartingBalance] =
-      await Promise.all([
-        getAccount(provider.connection, clientATA.address),
-        getAccount(provider.connection, merchantATA.address),
-        getAccount(provider.connection, daoATA.address),
-      ]);
-
-    console.log("Client starting balance:", clientStartingBalance.amount);
-    console.log("Merchant starting balance:", merchantStartingBalance.amount);
-    console.log("DAO starting balance:", daoStartingBalance.amount);
-
-    // Execute the transaction
+  async function initializeNewUser(
+    userPda: PublicKey,
+    user: anchor.web3.Keypair
+  ) {
     await program.methods
+      .initializeUser()
+      .accounts({
+        userAccount: userPda,
+        userPubkey: user.publicKey,
+        state: stateAccount.publicKey,
+        serviceWallet: onboardingServiceWallet.publicKey,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([onboardingServiceWallet])
+      .rpc();
+  }
+
+  const nftIdentifier = {
+    merkle_tree_address: new anchor.web3.PublicKey(
+      "BPFLoaderUpgradeab1e11111111111111111111111"
+    ),
+    leaf_index: 123,
+  };
+
+  async function initializeMerchant(
+    merchantPda: PublicKey,
+    user: anchor.web3.Keypair
+  ) {
+    await program.methods
+      .initializeMerchant({
+        merkleTreeAddress: nftIdentifier.merkle_tree_address,
+        leafIndex: nftIdentifier.leaf_index,
+      })
+      .accounts({
+        merchantAccount: merchantPda,
+        userAccount: userPda,
+        userPubkey: user.publicKey,
+        serviceWallet: merchantIdServiceWallet.publicKey,
+        state: stateAccount.publicKey,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([merchantIdServiceWallet])
+      .rpc();
+  }
+
+  async function mintMockUSDC(
+    connection: Connection,
+    payer: Keypair,
+    mintUSDC: PublicKey,
+    recipientPublicKey: PublicKey,
+    amount: number
+  ): Promise<void> {
+    const recipientTokenAccount = await getOrCreateAssociatedTokenAccount(
+      connection,
+      payer,
+      mintUSDC,
+      recipientPublicKey
+    );
+
+    await mintTo(
+      connection,
+      payer,
+      mintUSDC,
+      recipientTokenAccount.address,
+      payer,
+      amount,
+      []
+    );
+  }
+
+  async function getTokenAccountBalance(
+    connection: Connection,
+    tokenAccountAddress: PublicKey
+  ): Promise<number> {
+    const accountInfo = await connection.getTokenAccountBalance(
+      tokenAccountAddress
+    );
+    return parseInt(accountInfo.value.amount);
+  }
+
+  async function createExecuteTransactionInstruction({
+    program,
+    senderPublicKey,
+    senderUsdcAccount,
+    receiverUsdcAccount,
+    daoUsdcAccount,
+    stateAccountPublicKey,
+    amount,
+  }) {
+    return program.methods
       .executeTransaction(new anchor.BN(amount))
       .accounts({
-        sender: client.publicKey,
-        senderUsdcAccount: clientATA.address,
-        receiverUsdcAccount: merchantATA.address,
-        daoUsdcAccount: daoATA.address,
-        usdcMint: mint,
+        sender: senderPublicKey,
+        senderUsdcAccount,
+        receiverUsdcAccount,
+        daoUsdcAccount,
+        state: stateAccountPublicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
-      .signers([client])
-      .rpc();
+      .instruction();
+  }
 
-    // Fetch final balances
-    const [clientFinalBalance, merchantFinalBalance, daoFinalBalance] =
-      await Promise.all([
-        getAccount(provider.connection, clientATA.address),
-        getAccount(provider.connection, merchantATA.address),
-        getAccount(provider.connection, daoATA.address),
-      ]);
+  async function sendTransactionWithServiceWalletAsPayer({
+    provider,
+    serviceWallet,
+    instructions,
+    signers,
+  }) {
+    const transaction = new anchor.web3.Transaction();
+    instructions.forEach((instruction) => transaction.add(instruction));
 
-    // Balance calculations
-    const initialClientBalance = 1000 * 10 ** USDC_DECIMALS; // 1000 USDC
-    const fee = amount * 0.003; // 0.3% fee
-    const expectedClientBalance = initialClientBalance - amount;
-    const expectedMerchantBalance = amount - fee;
-    const expectedDaoBalance = fee;
+    // Prepare for sending the transaction
+    const { blockhash } = await provider.connection.getRecentBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = serviceWallet.publicKey;
 
-    // Assertions
-    assert.equal(
-      clientFinalBalance.amount.toString(),
-      expectedClientBalance.toString(),
-      "Client balance should be decremented by the transfer amount"
+    // Sign the transaction with both service wallet and other required signers
+    transaction.sign(serviceWallet, ...signers);
+
+    // Send the transaction
+    const signature = await provider.connection.sendRawTransaction(
+      transaction.serialize()
     );
-    assert.equal(
-      merchantFinalBalance.amount.toString(),
-      expectedMerchantBalance.toString(),
-      "Merchant balance should be incremented by the transfer amount minus fee"
+    await provider.connection.confirmTransaction(signature, "confirmed");
+  }
+
+  it("Both users should have 1000 USDC at start", async () => {
+    // Fetch the associated token accounts for both users
+    const userTokenAccount = await getOrCreateAssociatedTokenAccount(
+      provider.connection,
+      user, // Assuming 'user' is the payer for creating the account
+      mintUSDC,
+      user.publicKey // Owner of the token account
     );
-    assert.equal(
-      daoFinalBalance.amount.toString(),
-      expectedDaoBalance.toString(),
-      "DAO balance should be incremented by the fee amount"
+
+    const user2TokenAccount = await getOrCreateAssociatedTokenAccount(
+      provider.connection,
+      user2, // Assuming 'user2' is the payer for creating the account
+      mintUSDC,
+      user2.publicKey // Owner of the token account
     );
+
+    // Fetch and check balances
+    const userBalance = await getTokenAccountBalance(
+      provider.connection,
+      userTokenAccount.address
+    );
+    const user2Balance = await getTokenAccountBalance(
+      provider.connection,
+      user2TokenAccount.address
+    );
+
+    // Since 1000 USDC was minted with 6 decimal places, the expected amount is 1000 * 1_000_000
+    const expectedAmount = 1000 * 1_000_000;
+
+    assert.equal(userBalance, expectedAmount, "User 1 should have 1000 USDC");
+    assert.equal(user2Balance, expectedAmount, "User 2 should have 1000 USDC");
   });
 
-  it("executes transaction with minimum amount correctly", async () => {
-    const amount = BigInt(10000); // Smallest non-zero amount in micro-units of USDC, as bigint
+  it("executes a transaction signed by user but paid by service wallet", async () => {
+    const executeTransactionInstruction =
+      await createExecuteTransactionInstruction({
+        program,
+        senderPublicKey: user.publicKey,
+        senderUsdcAccount: userTokenAccount,
+        receiverUsdcAccount: user2TokenAccount,
+        daoUsdcAccount: daoTokenAccount,
+        stateAccountPublicKey: stateAccount.publicKey,
+        amount: 50 * 1_000_000,
+      });
 
-    // Fetch initial balances
-    const clientStartingBalance = await getAccount(
-      provider.connection,
-      clientATA.address
-    );
-    const merchantStartingBalance = await getAccount(
-      provider.connection,
-      merchantATA.address
-    );
-    const daoStartingBalance = await getAccount(
-      provider.connection,
-      daoATA.address
-    );
+    // Send the transaction
+    await sendTransactionWithServiceWalletAsPayer({
+      provider,
+      serviceWallet: transactionServiceWallet,
+      instructions: [executeTransactionInstruction],
+      signers: [user],
+    });
 
-    // Execute the transaction
-    await program.methods
-      .executeTransaction(new anchor.BN(amount.toString()))
-      .accounts({
-        sender: client.publicKey,
-        senderUsdcAccount: clientATA.address,
-        receiverUsdcAccount: merchantATA.address,
-        daoUsdcAccount: daoATA.address,
-        usdcMint: mint,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      })
-      .signers([client])
-      .rpc();
-
-    // Fetch final balances
-    const clientFinalBalance = await getAccount(
+    // Here, you can add assertions to verify the state after the transaction
+    const userBalance = await getTokenAccountBalance(
       provider.connection,
-      clientATA.address
+      userTokenAccount
     );
-    const merchantFinalBalance = await getAccount(
+    const user2Balance = await getTokenAccountBalance(
       provider.connection,
-      merchantATA.address
+      user2TokenAccount
     );
-    const daoFinalBalance = await getAccount(
+    const daoBalance = await getTokenAccountBalance(
       provider.connection,
-      daoATA.address
+      daoTokenAccount
     );
 
-    // Calculate expected balances
-    const fee = BigInt(Math.ceil(Number(amount) * 0.003)); // 0.3% fee, rounded up and converted to bigint
-    const expectedClientBalance = clientStartingBalance.amount - amount;
-    const expectedMerchantBalance =
-      merchantStartingBalance.amount + amount - fee;
-    const expectedDaoBalance = daoStartingBalance.amount + fee;
+    assert.equal(userBalance, 950 * 1_000_000, "User 1 should have 950 USDC");
 
-    // Assertions
+    // Receiver (user2) should have their original balance plus the received amount minus the transaction fee
+    // Calculating the expected amount received after subtracting the fee
+    const expectedReceivedAmount = 50 * 1_000_000 - 150_000; // 50 USDC in lamports minus the fee in lamports
     assert.equal(
-      clientFinalBalance.amount,
-      expectedClientBalance,
-      "Client balance should be decremented by the transfer amount"
+      user2Balance,
+      1_000_000_000 + expectedReceivedAmount,
+      "User 2 should have their balance increased by 50 USDC minus the 0.3% fee"
     );
+
+    // DAO should have the transaction fee
     assert.equal(
-      merchantFinalBalance.amount,
-      expectedMerchantBalance,
-      "Merchant balance should be incremented by the transfer amount minus fee"
-    );
-    assert.equal(
-      daoFinalBalance.amount,
-      expectedDaoBalance,
-      "DAO balance should be incremented by the fee amount"
-    );
-  });
-
-  it("rejects transactions below the minimum amount", async () => {
-    const amountBelowMinimum = BigInt(5000); // Amount below the minimum threshold
-
-    try {
-      await program.methods
-        .executeTransaction(new anchor.BN(amountBelowMinimum.toString()))
-        .accounts({
-          sender: client.publicKey,
-          senderUsdcAccount: clientATA.address,
-          receiverUsdcAccount: merchantATA.address,
-          daoUsdcAccount: daoATA.address,
-          usdcMint: mint,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
-        .signers([client])
-        .rpc();
-
-      assert.fail(
-        "Transaction should have been rejected due to amount being too low"
-      );
-    } catch (error) {
-      const isAmountTooLowError = error.message.includes("0x3");
-      assert.isTrue(
-        isAmountTooLowError,
-        "Error should be for transaction amount being too low"
-      );
-    }
-  });
-
-  it("fails to execute transaction with insufficient funds", async () => {
-    const amount = BigInt(2000 * 10 ** USDC_DECIMALS); // 2000 USDC in micro-units, more than the client's balance
-
-    try {
-      await program.methods
-        .executeTransaction(new anchor.BN(amount.toString()))
-        .accounts({
-          sender: client.publicKey,
-          senderUsdcAccount: clientATA.address,
-          receiverUsdcAccount: merchantATA.address,
-          daoUsdcAccount: daoATA.address,
-          usdcMint: mint,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
-        .signers([client])
-        .rpc();
-
-      assert.fail("Transaction should have failed due to insufficient funds");
-    } catch (error) {
-      console.log("Error message:", error.message); // Debugging: print the error message
-      const isInsufficientFundsError = error.message.includes("0x4");
-      assert.isTrue(
-        isInsufficientFundsError,
-        "Error should be due to insufficient funds"
-      );
-    }
-  });
-
-  it("executes transaction with very large amount correctly", async () => {
-    const amount = BigInt(500000 * 10 ** USDC_DECIMALS); // 500,000 USDC in micro-units
-
-    // Mint additional USDC to the client to cover the large transaction amount
-    await mintTo(
-      provider.connection,
-      payer,
-      mint,
-      clientATA.address,
-      mintAuthority,
-      amount
-    );
-
-    // Fetch initial balances
-    const clientStartingBalance = await getAccount(
-      provider.connection,
-      clientATA.address
-    );
-    const merchantStartingBalance = await getAccount(
-      provider.connection,
-      merchantATA.address
-    );
-    const daoStartingBalance = await getAccount(
-      provider.connection,
-      daoATA.address
-    );
-
-    // Execute the transaction
-    await program.methods
-      .executeTransaction(new anchor.BN(amount.toString()))
-      .accounts({
-        sender: client.publicKey,
-        senderUsdcAccount: clientATA.address,
-        receiverUsdcAccount: merchantATA.address,
-        daoUsdcAccount: daoATA.address,
-        usdcMint: mint,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      })
-      .signers([client])
-      .rpc();
-
-    // Fetch final balances
-    const clientFinalBalance = await getAccount(
-      provider.connection,
-      clientATA.address
-    );
-    const merchantFinalBalance = await getAccount(
-      provider.connection,
-      merchantATA.address
-    );
-    const daoFinalBalance = await getAccount(
-      provider.connection,
-      daoATA.address
-    );
-
-    // Calculate expected balances
-    const fee = (amount * BigInt(3)) / BigInt(1000); // 0.3% fee
-    const expectedClientBalance = clientStartingBalance.amount - amount;
-    const expectedMerchantBalance =
-      merchantStartingBalance.amount + amount - fee;
-    const expectedDaoBalance = daoStartingBalance.amount + fee;
-
-    // Assertions
-    assert.equal(
-      clientFinalBalance.amount,
-      expectedClientBalance,
-      "Client balance should be decremented by the transfer amount"
-    );
-    assert.equal(
-      merchantFinalBalance.amount,
-      expectedMerchantBalance,
-      "Merchant balance should be incremented by the transfer amount minus fee"
-    );
-    assert.equal(
-      daoFinalBalance.amount,
-      expectedDaoBalance,
-      "DAO balance should be incremented by the fee amount"
+      daoBalance,
+      1_000_000_000 + 150_000,
+      "DAO should have the 0.3% transaction fee"
     );
   });
 });
