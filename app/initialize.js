@@ -30,6 +30,9 @@ async function main() {
   const usersWalletPubkey = new PublicKey(
     "HyZWBzi5EH9mm7FFhpAHQArm5JyY1KPeWgSxMN6YZdJy"
   );
+  const merchantsWalletPubkey = new PublicKey(
+    "HyZWBzi5EH9mm7FFhpAHQArm5JyY1KPeWgSxMN6YZdJy"
+  );
   const reviewsWalletPubkey = new PublicKey(
     "HyZWBzi5EH9mm7FFhpAHQArm5JyY1KPeWgSxMN6YZdJy"
   );
@@ -37,6 +40,7 @@ async function main() {
   await program.rpc.initialize(
     daoPubkey,
     usersWalletPubkey,
+    merchantsWalletPubkey,
     reviewsWalletPubkey,
     {
       accounts: {
@@ -60,6 +64,10 @@ async function main() {
   console.log(
     "User Wallet Public Key:",
     stateAccount.usersWalletPubkey.toString()
+  );
+  console.log(
+    "Merchant Wallet Public Key:",
+    stateAccount.merchantsWalletPubkey.toString()
   );
   console.log(
     "Review Wallet Public Key:",

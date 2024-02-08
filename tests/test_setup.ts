@@ -12,13 +12,24 @@ export async function initializeState(
   program: Program<CryptoMapp>,
   stateAccount: Keypair,
   payer: Keypair,
+  mintUSDC: PublicKey,
+  transactionFeePercentage: number,
   daoPubkey: PublicKey,
   userPubkey: PublicKey,
   merchantPubkey: PublicKey,
+  transactionPubkey: PublicKey,
   reviewPubkey: PublicKey
 ): Promise<void> {
   await program.methods
-    .initialize(daoPubkey, userPubkey, merchantPubkey, reviewPubkey)
+    .initialize(
+      mintUSDC,
+      transactionFeePercentage,
+      daoPubkey,
+      userPubkey,
+      merchantPubkey,
+      transactionPubkey,
+      reviewPubkey
+    )
     .accounts({
       state: stateAccount.publicKey,
       user: payer.publicKey,

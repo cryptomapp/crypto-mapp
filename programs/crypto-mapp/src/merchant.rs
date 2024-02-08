@@ -9,7 +9,7 @@ pub fn initialize_merchant(
     ctx: Context<InitializeMerchant>,
     nft_identifier: CnftIdentifier,
 ) -> ProgramResult {
-    if ctx.accounts.service_wallet.key() != ctx.accounts.state.merchants_wallet_pubkey {
+    if ctx.accounts.service_wallet.key() != ctx.accounts.state.merchant_id_service_wallet_pubkey {
         return Err(ErrorCode::Unauthorized.into());
     }
 
@@ -33,7 +33,7 @@ pub fn initialize_merchant_with_referrer(
     ctx: Context<InitializeMerchantWithReferrer>,
     nft_identifier: CnftIdentifier,
 ) -> ProgramResult {
-    if ctx.accounts.service_wallet.key() != ctx.accounts.state.merchants_wallet_pubkey {
+    if ctx.accounts.service_wallet.key() != ctx.accounts.state.merchant_id_service_wallet_pubkey {
         return Err(ErrorCode::Unauthorized.into());
     }
 

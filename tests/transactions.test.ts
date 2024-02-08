@@ -11,7 +11,7 @@ import {
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 
-describe("execute_transaction tests", () => {
+describe.only("execute_transaction tests", () => {
   // Setup the provider
   anchor.setProvider(anchor.AnchorProvider.env());
   const provider = anchor.AnchorProvider.local();

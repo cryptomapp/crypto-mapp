@@ -3,7 +3,7 @@ import { assert } from "chai";
 import { CryptoMapp } from "../target/types/crypto_mapp";
 import { fundAccount, calculatePDA, initializeState } from "./test_setup";
 
-describe.only("Merchant Functionality Tests", () => {
+describe("Merchant Functionality Tests", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
   const program = anchor.workspace.CryptoMapp as anchor.Program<CryptoMapp>;
@@ -16,9 +16,12 @@ describe.only("Merchant Functionality Tests", () => {
   };
 
   let stateAccount: anchor.web3.Keypair;
+  let mintUSDC: anchor.web3.PublicKey;
   let daoWallet: anchor.web3.Keypair;
+  let transactionFee = 30;
   let userWallet: anchor.web3.Keypair;
   let merchantWallet: anchor.web3.Keypair;
+  let transactionWallet: anchor.web3.Keypair;
   let reviewWallet: anchor.web3.Keypair;
   let user: anchor.web3.Keypair;
   let userPda: anchor.web3.PublicKey;
@@ -30,9 +33,11 @@ describe.only("Merchant Functionality Tests", () => {
     user = anchor.web3.Keypair.generate();
     referrer = anchor.web3.Keypair.generate();
     stateAccount = anchor.web3.Keypair.generate();
+    mintUSDC = anchor.web3.Keypair.generate().publicKey;
     daoWallet = anchor.web3.Keypair.generate();
     userWallet = anchor.web3.Keypair.generate();
     merchantWallet = anchor.web3.Keypair.generate();
+    transactionWallet = anchor.web3.Keypair.generate();
     reviewWallet = anchor.web3.Keypair.generate();
 
     await fundAccount(provider.connection, user);
@@ -41,7 +46,6 @@ describe.only("Merchant Functionality Tests", () => {
     await fundAccount(provider.connection, daoWallet);
     await fundAccount(provider.connection, userWallet);
     await fundAccount(provider.connection, merchantWallet);
-    await fundAccount(provider.connection, reviewWallet);
 
     [userPda] = await calculatePDA(program.programId, user, "user");
     [referrerPda] = await calculatePDA(program.programId, referrer, "user");
@@ -50,9 +54,12 @@ describe.only("Merchant Functionality Tests", () => {
       program,
       stateAccount,
       user,
+      mintUSDC,
+      transactionFee,
       daoWallet.publicKey,
       userWallet.publicKey,
       merchantWallet.publicKey,
+      transactionWallet.publicKey,
       reviewWallet.publicKey
     );
   });

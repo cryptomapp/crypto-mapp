@@ -10,6 +10,11 @@ describe("Program Initialization Tests", () => {
   const program = anchor.workspace.CryptoMapp as Program<CryptoMapp>;
 
   // Generate a new keypair for testing and use its public key
+  const testUSDCMintKeypair = Keypair.generate();
+  const testUSDCMintPubkey = testUSDCMintKeypair.publicKey;
+
+  const feePercentage = 30; // 0.30%
+
   const testDaoKeypair = Keypair.generate();
   const testDaoPubkey = testDaoKeypair.publicKey;
 
@@ -18,6 +23,9 @@ describe("Program Initialization Tests", () => {
 
   const testMerchantWalletKeypair = Keypair.generate();
   const testMerchantWalletPubkey = testMerchantWalletKeypair.publicKey;
+
+  const testTransactionWalletKeypair = Keypair.generate();
+  const testTransactionWalletPubkey = testTransactionWalletKeypair.publicKey;
 
   const testReviewsWalletKeypair = Keypair.generate();
   const testReviewsWalletPubkey = testReviewsWalletKeypair.publicKey;
@@ -29,9 +37,12 @@ describe("Program Initialization Tests", () => {
     // Send a transaction to initialize the program state
     await program.methods
       .initialize(
+        testUSDCMintPubkey,
+        feePercentage,
         testDaoPubkey,
         testUsersWalletPubkey,
         testMerchantWalletPubkey,
+        testTransactionWalletPubkey,
         testReviewsWalletPubkey
       )
       .accounts({
@@ -49,19 +60,31 @@ describe("Program Initialization Tests", () => {
 
     // Assertions
     assert.ok(
+      state.usdcMint.equals(testUSDCMintPubkey),
+      "USDC mint should be set correctly in the program state"
+    );
+    assert.ok(
+      state.transactionFeePercentage == feePercentage,
+      "Transaction fee percentage should be set correctly in the program state"
+    );
+    assert.ok(
       state.daoPubkey.equals(testDaoPubkey),
       "DAO public key should be set correctly in the program state"
     );
     assert.ok(
-      state.usersWalletPubkey.equals(testUsersWalletPubkey),
+      state.onboardingServiceWalletPubkey.equals(testUsersWalletPubkey),
       "Users wallet public key should be set correctly in the program state"
     );
     assert.ok(
-      state.merchantsWalletPubkey.equals(testMerchantWalletPubkey),
+      state.merchantIdServiceWalletPubkey.equals(testMerchantWalletPubkey),
       "Merchant wallet public key should be set correctly in the program state"
     );
     assert.ok(
-      state.reviewsWalletPubkey.equals(testReviewsWalletPubkey),
+      state.transactionServiceWalletPubkey.equals(testTransactionWalletPubkey),
+      "Transaction wallet public key should be set correctly in the program state"
+    );
+    assert.ok(
+      state.reviewServiceWalletPubkey.equals(testReviewsWalletPubkey),
       "Review wallet public key should be set correctly in the program state"
     );
     assert.ok(state.merchantCounter == 0);

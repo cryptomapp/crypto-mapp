@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::entrypoint::ProgramResult;
 
 pub fn initialize_user(ctx: Context<InitializeUser>) -> ProgramResult {
-    if ctx.accounts.service_wallet.key() != ctx.accounts.state.users_wallet_pubkey {
+    if ctx.accounts.service_wallet.key() != ctx.accounts.state.onboarding_service_wallet_pubkey {
         return Err(ErrorCode::Unauthorized.into());
     }
 
@@ -17,7 +17,7 @@ pub fn initialize_user(ctx: Context<InitializeUser>) -> ProgramResult {
 
 // Function to initialize a new user with a referrer
 pub fn initialize_user_with_referrer(ctx: Context<InitializeUserWithReferrer>) -> ProgramResult {
-    if ctx.accounts.service_wallet.key() != ctx.accounts.state.users_wallet_pubkey {
+    if ctx.accounts.service_wallet.key() != ctx.accounts.state.onboarding_service_wallet_pubkey {
         return Err(ErrorCode::Unauthorized.into());
     }
     let user_account = &mut ctx.accounts.user_account;

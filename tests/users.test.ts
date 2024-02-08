@@ -10,18 +10,23 @@ describe("User Functionality Tests", () => {
 
   let user: anchor.web3.Keypair;
   let userPda: anchor.web3.PublicKey;
+  let mintUSDC: anchor.web3.PublicKey;
   let state: anchor.web3.Keypair;
   let daoWallet: anchor.web3.Keypair;
+  let transactionFee = 30;
   let userWallet: anchor.web3.Keypair;
   let merchantWallet: anchor.web3.Keypair;
+  let transactionWallet: anchor.web3.Keypair;
   let reviewWallet: anchor.web3.Keypair;
 
   beforeEach(async () => {
     user = anchor.web3.Keypair.generate();
+    mintUSDC = anchor.web3.Keypair.generate().publicKey;
     state = anchor.web3.Keypair.generate();
     daoWallet = anchor.web3.Keypair.generate();
     userWallet = anchor.web3.Keypair.generate();
     merchantWallet = anchor.web3.Keypair.generate();
+    transactionWallet = anchor.web3.Keypair.generate();
     reviewWallet = anchor.web3.Keypair.generate();
 
     await fundAccount(provider.connection, user);
@@ -36,9 +41,12 @@ describe("User Functionality Tests", () => {
       program,
       state,
       user,
+      mintUSDC,
+      transactionFee,
       daoWallet.publicKey,
       userWallet.publicKey,
       merchantWallet.publicKey,
+      transactionWallet.publicKey,
       reviewWallet.publicKey
     );
   });

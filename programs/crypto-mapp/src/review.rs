@@ -12,7 +12,7 @@ pub fn add_rating(ctx: Context<AddRating>, rating: u8) -> ProgramResult {
     }
 
     // Ensure the caller is the review_wallet
-    if ctx.accounts.signer.key() != ctx.accounts.state.reviews_wallet_pubkey {
+    if ctx.accounts.signer.key() != ctx.accounts.state.review_service_wallet_pubkey {
         return Err(ErrorCode::Unauthorized.into());
     }
 
