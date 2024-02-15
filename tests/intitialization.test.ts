@@ -30,7 +30,7 @@ describe("Program Initialization Tests", () => {
   const testReviewsWalletKeypair = Keypair.generate();
   const testReviewsWalletPubkey = testReviewsWalletKeypair.publicKey;
 
-  it("initializes the program state with the test DAO public key", async () => {
+  it("initializes the program state", async () => {
     // Generate a new keypair for the program state account
     const programStateAccount = Keypair.generate();
 

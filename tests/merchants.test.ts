@@ -115,13 +115,24 @@ describe("Merchant Functionality Tests", () => {
 
   it("Initializes a new merchant", async () => {
     await initializeNewUser();
+
+    const userAccount = await program.account.user.fetch(userPda);
+    assert.isFalse(userAccount.isMerchant, "User should not be a merchant yet");
+
     await initializeMerchant();
+
+    // Fetch the user account again to get the updated state
+    const updatedUserAccount = await program.account.user.fetch(userPda);
 
     // Fetch and verify the initialized merchant account
     const merchantAccount = await program.account.merchant.fetch(merchantPda);
     assert.isTrue(
       merchantAccount.isInitialized,
       "Merchant should be initialized"
+    );
+    assert.isTrue(
+      updatedUserAccount.isMerchant,
+      "User should be marked as a merchant"
     );
     assert.strictEqual(
       merchantAccount.nftIdentifier.merkleTreeAddress.toString(),
@@ -138,6 +149,7 @@ describe("Merchant Functionality Tests", () => {
   it("Initializes a new merchant with a referrer", async () => {
     // Initialize the referrer as a user
     await initializeReferrerAsUser();
+
     [userPda] = await calculatePDA(program.programId, user, "user");
 
     // Initialize the main user with the referrer
@@ -155,8 +167,8 @@ describe("Merchant Functionality Tests", () => {
       .signers([userWallet])
       .rpc();
 
-    // Log the referrer set in the user's account
     const userAccount = await program.account.user.fetch(userPda);
+    assert.isFalse(userAccount.isMerchant, "User should not be a merchant yet");
 
     assert.strictEqual(
       userAccount.referrer.toString(),
@@ -189,6 +201,10 @@ describe("Merchant Functionality Tests", () => {
       console.error("Error initializing merchant with referrer:", error);
       throw error; // Rethrow to fail the test in case of error
     }
+
+    // Fetch the user account again to get the updated state
+    const updatedUserAccount = await program.account.user.fetch(userPda);
+    assert.isTrue(updatedUserAccount.isMerchant, "User should be a merchant");
 
     // Fetch and verify the initialized merchant account
     const merchantAccount = await program.account.merchant.fetch(merchantPda);

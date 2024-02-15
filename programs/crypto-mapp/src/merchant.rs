@@ -25,6 +25,7 @@ pub fn initialize_merchant(
 
     // Logic to mint EXP to merchant
     user_account.exp_points += 100;
+    user_account.is_merchant = true;
 
     Ok(())
 }
@@ -52,7 +53,8 @@ pub fn initialize_merchant_with_referrer(
     state.merchant_counter += 1;
 
     // Logic to mint EXP to merchant
-    user_account.exp_points += 100;
+    user_account.exp_points += 150;
+    user_account.is_merchant = true;
 
     // Logic to mint EXP to referrer
     match user_account.referrer {

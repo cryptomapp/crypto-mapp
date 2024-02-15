@@ -9,13 +9,13 @@ pub fn initialize_user(ctx: Context<InitializeUser>) -> ProgramResult {
 
     let user_account = &mut ctx.accounts.user_account;
     user_account.is_initialized = true;
+    user_account.is_merchant = false;
     user_account.exp_points = 100;
     user_account.referrer = None;
 
     Ok(())
 }
 
-// Function to initialize a new user with a referrer
 pub fn initialize_user_with_referrer(ctx: Context<InitializeUserWithReferrer>) -> ProgramResult {
     if ctx.accounts.service_wallet.key() != ctx.accounts.state.onboarding_service_wallet_pubkey {
         return Err(ErrorCode::Unauthorized.into());
@@ -24,6 +24,7 @@ pub fn initialize_user_with_referrer(ctx: Context<InitializeUserWithReferrer>) -
     let referrer_account = &mut ctx.accounts.referrer_account;
 
     user_account.is_initialized = true;
+    user_account.is_merchant = false;
     user_account.exp_points = 150;
     user_account.referrer = Some(ctx.accounts.referrer.key());
 
@@ -32,7 +33,6 @@ pub fn initialize_user_with_referrer(ctx: Context<InitializeUserWithReferrer>) -
     Ok(())
 }
 
-// Function to check if a user exists
 pub fn check_user_exists(ctx: Context<CheckUserExists>) -> ProgramResult {
     let user_account = &ctx.accounts.user;
 
@@ -46,6 +46,7 @@ pub fn check_user_exists(ctx: Context<CheckUserExists>) -> ProgramResult {
 #[account]
 pub struct User {
     pub is_initialized: bool,
+    pub is_merchant: bool,
     pub exp_points: u32,
     pub referrer: Option<Pubkey>,
 }
@@ -57,7 +58,7 @@ pub struct CheckUserExists<'info> {
 
 #[derive(Accounts)]
 pub struct InitializeUser<'info> {
-    #[account(init, payer = service_wallet, space = 8 + 1 + 4 + 33 + 10,
+    #[account(init, payer = service_wallet, space = 8 + 1 + 1 + 4 + 33 + 10,
          seeds = [b"user".as_ref(), user_pubkey.key().as_ref()], bump)]
     pub user_account: Account<'info, User>,
     /// CHECK: This is checked in the program logic
@@ -70,7 +71,7 @@ pub struct InitializeUser<'info> {
 
 #[derive(Accounts)]
 pub struct InitializeUserWithReferrer<'info> {
-    #[account(init, payer = service_wallet, space = 8 + 1 + 4 + 33 + 10, 
+    #[account(init, payer = service_wallet, space = 8 + 1 + 1 + 4 + 33 + 10, 
         seeds = [b"user".as_ref(), user_pubkey.key().as_ref()], bump)]
     pub user_account: Account<'info, User>,
     #[account(mut, seeds = [b"user".as_ref(), referrer.key().as_ref()], bump)]
