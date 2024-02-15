@@ -24,6 +24,10 @@ const program = anchor.workspace.CryptoMapp;
 async function main() {
   const programState = Keypair.generate();
 
+  const transactionFee = 30;
+  const usdcMintPubkey = new PublicKey(
+    "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"
+  );
   const daoPubkey = new PublicKey(
     "HyZWBzi5EH9mm7FFhpAHQArm5JyY1KPeWgSxMN6YZdJy"
   );
@@ -33,14 +37,20 @@ async function main() {
   const merchantsWalletPubkey = new PublicKey(
     "HyZWBzi5EH9mm7FFhpAHQArm5JyY1KPeWgSxMN6YZdJy"
   );
+  const transactionsWalletPubkey = new PublicKey(
+    "HyZWBzi5EH9mm7FFhpAHQArm5JyY1KPeWgSxMN6YZdJy"
+  );
   const reviewsWalletPubkey = new PublicKey(
     "HyZWBzi5EH9mm7FFhpAHQArm5JyY1KPeWgSxMN6YZdJy"
   );
 
   await program.rpc.initialize(
+    usdcMintPubkey,
+    transactionFee,
     daoPubkey,
     usersWalletPubkey,
     merchantsWalletPubkey,
+    transactionsWalletPubkey,
     reviewsWalletPubkey,
     {
       accounts: {
