@@ -10,7 +10,7 @@ import {
   mintTo,
 } from "@solana/spl-token";
 
-describe("Transaction Tests", () => {
+describe.only("Transaction Tests", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
   const program = anchor.workspace.CryptoMapp as anchor.Program<CryptoMapp>;
@@ -19,6 +19,11 @@ describe("Transaction Tests", () => {
   let userTokenAccount: anchor.web3.PublicKey;
   let user2TokenAccount: anchor.web3.PublicKey;
   let daoTokenAccount: anchor.web3.PublicKey;
+  let userPda: anchor.web3.PublicKey;
+  let senderUserAccount: anchor.web3.PublicKey;
+  let user2Pda: anchor.web3.PublicKey;
+  let receiverUserAccount: anchor.web3.PublicKey;
+  let merchantPda: anchor.web3.PublicKey;
 
   // Service wallets
   let stateAccount: anchor.web3.Keypair,
@@ -32,9 +37,6 @@ describe("Transaction Tests", () => {
 
   // Transaction Fee
   const transactionFee = 30; // 0.3%
-
-  // PDA Addresses
-  let userPda, user2Pda, merchantPda;
 
   beforeEach(async () => {
     // Generate keypairs for service wallets
@@ -116,7 +118,11 @@ describe("Transaction Tests", () => {
 
     // Calculate PDAs
     [userPda] = await calculatePDA(program.programId, user, "user");
+    receiverUserAccount = userPda;
+
     [user2Pda] = await calculatePDA(program.programId, user2, "user");
+    senderUserAccount = user2Pda;
+
     [merchantPda] = await calculatePDA(program.programId, user, "merchant");
 
     // Initialize user, referrer as users, and merchant
@@ -236,6 +242,8 @@ describe("Transaction Tests", () => {
     receiverUsdcAccount,
     daoUsdcAccount,
     stateAccountPublicKey,
+    senderUserAccount,
+    receiverUserAccount,
     amount,
   }) {
     return program.methods
@@ -247,6 +255,8 @@ describe("Transaction Tests", () => {
         daoUsdcAccount,
         state: stateAccountPublicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
+        senderUserAccount,
+        receiverUserAccount,
       })
       .instruction();
   }
@@ -267,6 +277,10 @@ describe("Transaction Tests", () => {
 
     // Sign the transaction with both service wallet and other required signers
     transaction.sign(serviceWallet, ...signers);
+
+    // serialize, pass
+
+    // SERVER
 
     // Send the transaction
     const signature = await provider.connection.sendRawTransaction(
@@ -318,6 +332,8 @@ describe("Transaction Tests", () => {
         daoUsdcAccount: daoTokenAccount,
         stateAccountPublicKey: stateAccount.publicKey,
         amount: 50 * 1_000_000,
+        senderUserAccount,
+        receiverUserAccount,
       });
 
     // Send the transaction

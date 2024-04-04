@@ -1,4 +1,4 @@
-use crate::{ErrorCode, ProgramState};
+use crate::{ErrorCode, ProgramState, User};
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::entrypoint::ProgramResult;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
@@ -40,6 +40,10 @@ pub fn execute_transaction(ctx: Context<ExecuteTransaction>, amount: u64) -> Pro
     );
     token::transfer(transfer_to_dao_cpi_ctx, fee)?;
 
+    // Assuming transaction is successful, award EXP points to both sender and receiver
+    ctx.accounts.sender_user_account.exp_points += 10;
+    ctx.accounts.receiver_user_account.exp_points += 10;
+
     Ok(())
 }
 
@@ -57,4 +61,8 @@ pub struct ExecuteTransaction<'info> {
     pub state: Account<'info, ProgramState>,
     #[account(address = token::ID)]
     pub token_program: Program<'info, Token>,
+    #[account(mut)]
+    pub sender_user_account: Account<'info, User>,
+    #[account(mut)]
+    pub receiver_user_account: Account<'info, User>,
 }

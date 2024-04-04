@@ -71,17 +71,22 @@ async function main() {
 
   // Print values from the state
   console.log("DAO Public Key:", stateAccount.daoPubkey.toString());
+  console.log("Transaction Fee:", stateAccount.transactionFeePercentage);
   console.log(
     "User Wallet Public Key:",
-    stateAccount.usersWalletPubkey.toString()
+    stateAccount.onboardingServiceWalletPubkey.toString()
   );
   console.log(
     "Merchant Wallet Public Key:",
-    stateAccount.merchantsWalletPubkey.toString()
+    stateAccount.merchantIdServiceWalletPubkey.toString()
+  );
+  console.log(
+    "Transaction Wallet Public Key:",
+    stateAccount.transactionServiceWalletPubkey.toString()
   );
   console.log(
     "Review Wallet Public Key:",
-    stateAccount.reviewsWalletPubkey.toString()
+    stateAccount.reviewServiceWalletPubkey.toString()
   );
   console.log("Merchant Counter:", stateAccount.merchantCounter);
 }
