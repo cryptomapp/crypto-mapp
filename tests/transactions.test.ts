@@ -323,6 +323,12 @@ describe.only("Transaction Tests", () => {
   });
 
   it("executes a transaction signed by user but paid by service wallet", async () => {
+    let senderInitialExp = (await program.account.user.fetch(senderUserAccount))
+      .expPoints;
+    let receiverInitialExp = (
+      await program.account.user.fetch(receiverUserAccount)
+    ).expPoints;
+
     const executeTransactionInstruction =
       await createExecuteTransactionInstruction({
         program,
@@ -343,6 +349,24 @@ describe.only("Transaction Tests", () => {
       instructions: [executeTransactionInstruction],
       signers: [user],
     });
+
+    // Fetch updated EXP points
+    let senderUpdatedExp = (await program.account.user.fetch(senderUserAccount))
+      .expPoints;
+    let receiverUpdatedExp = (
+      await program.account.user.fetch(receiverUserAccount)
+    ).expPoints;
+
+    assert.equal(
+      senderUpdatedExp,
+      senderInitialExp + 10,
+      "Sender should have been awarded 10 EXP points"
+    );
+    assert.equal(
+      receiverUpdatedExp,
+      receiverInitialExp + 10,
+      "Receiver should have been awarded 10 EXP points"
+    );
 
     // Here, you can add assertions to verify the state after the transaction
     const userBalance = await getTokenAccountBalance(
