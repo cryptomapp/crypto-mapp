@@ -2,17 +2,25 @@ import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
 import { CryptoMapp } from "../target/types/crypto_mapp";
 import { fundAccount, calculatePDA, initializeState } from "./test_setup";
+import { createMint } from "@solana/spl-token";
+import { PublicKey, SystemProgram } from "@solana/web3.js";
 
 describe("Review Functionality Tests", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
   const program = anchor.workspace.CryptoMapp as anchor.Program<CryptoMapp>;
 
-  let stateAccount: anchor.web3.Keypair;
-  let daoWallet: anchor.web3.Keypair;
-  let userWallet: anchor.web3.Keypair;
-  let reviewWallet: anchor.web3.Keypair;
-  let user: anchor.web3.Keypair;
+  // Service wallets
+  let stateAccount: anchor.web3.Keypair,
+    daoWallet: anchor.web3.Keypair,
+    onboardingServiceWallet: anchor.web3.Keypair,
+    merchantIdServiceWallet: anchor.web3.Keypair,
+    transactionServiceWallet: anchor.web3.Keypair,
+    reviewServiceWallet: anchor.web3.Keypair,
+    user: anchor.web3.Keypair,
+    user2: anchor.web3.Keypair;
+
+  let mintUSDC: anchor.web3.PublicKey;
   let userPda: anchor.web3.PublicKey;
   let merchantPda: anchor.web3.PublicKey;
 
@@ -20,55 +28,90 @@ describe("Review Functionality Tests", () => {
     user = anchor.web3.Keypair.generate();
     stateAccount = anchor.web3.Keypair.generate();
     daoWallet = anchor.web3.Keypair.generate();
-    userWallet = anchor.web3.Keypair.generate();
-    reviewWallet = anchor.web3.Keypair.generate();
+    onboardingServiceWallet = anchor.web3.Keypair.generate();
+    merchantIdServiceWallet = anchor.web3.Keypair.generate();
+    transactionServiceWallet = anchor.web3.Keypair.generate();
+    reviewServiceWallet = anchor.web3.Keypair.generate();
 
     await fundAccount(provider.connection, user);
     await fundAccount(provider.connection, stateAccount);
     await fundAccount(provider.connection, daoWallet);
-    await fundAccount(provider.connection, userWallet);
-    await fundAccount(provider.connection, reviewWallet);
+    await fundAccount(provider.connection, onboardingServiceWallet);
+    await fundAccount(provider.connection, merchantIdServiceWallet);
+    await fundAccount(provider.connection, transactionServiceWallet);
+    await fundAccount(provider.connection, reviewServiceWallet);
 
     [userPda] = await calculatePDA(program.programId, user, "user");
+
+    mintUSDC = await createMint(
+      provider.connection,
+      user,
+      user.publicKey,
+      null,
+      6
+    );
+    const transactionFee = 30;
+
+    // Fund keypairs
+    await Promise.all(
+      [
+        stateAccount,
+        daoWallet,
+        onboardingServiceWallet,
+        merchantIdServiceWallet,
+        transactionServiceWallet,
+        reviewServiceWallet,
+      ].map((kp) => fundAccount(provider.connection, kp))
+    );
 
     await initializeState(
       program,
       stateAccount,
       user,
+      mintUSDC,
+      transactionFee,
       daoWallet.publicKey,
-      userWallet.publicKey,
-      reviewWallet.publicKey
+      onboardingServiceWallet.publicKey,
+      merchantIdServiceWallet.publicKey,
+      transactionServiceWallet.publicKey,
+      reviewServiceWallet.publicKey
     );
 
-    await initializeNewUser();
-    await initializeMerchant();
+    [userPda] = await calculatePDA(program.programId, user, "user");
+    [merchantPda] = await calculatePDA(program.programId, user, "merchant");
+
+    await initializeNewUser(userPda, user);
+    await initializeMerchant(merchantPda, user);
   });
 
-  async function initializeNewUser() {
+  async function initializeNewUser(
+    userPda: PublicKey,
+    user: anchor.web3.Keypair
+  ) {
     await program.methods
       .initializeUser()
       .accounts({
         userAccount: userPda,
         userPubkey: user.publicKey,
-        serviceWallet: userWallet.publicKey,
         state: stateAccount.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
+        serviceWallet: onboardingServiceWallet.publicKey,
+        systemProgram: SystemProgram.programId,
       })
-      .signers([userWallet])
+      .signers([onboardingServiceWallet])
       .rpc();
   }
 
-  async function initializeMerchant() {
-    // Proceed with merchant initialization
-    [merchantPda] = await calculatePDA(program.programId, user, "merchant");
+  const nftIdentifier = {
+    merkle_tree_address: new anchor.web3.PublicKey(
+      "BPFLoaderUpgradeab1e11111111111111111111111"
+    ),
+    leaf_index: 123,
+  };
 
-    const nftIdentifier = {
-      merkle_tree_address: new anchor.web3.PublicKey(
-        "BPFLoaderUpgradeab1e11111111111111111111111"
-      ),
-      leaf_index: 123,
-    };
-
+  async function initializeMerchant(
+    merchantPda: PublicKey,
+    user: anchor.web3.Keypair
+  ) {
     await program.methods
       .initializeMerchant({
         merkleTreeAddress: nftIdentifier.merkle_tree_address,
@@ -77,16 +120,21 @@ describe("Review Functionality Tests", () => {
       .accounts({
         merchantAccount: merchantPda,
         userAccount: userPda,
-        user: user.publicKey,
+        userPubkey: user.publicKey,
+        serviceWallet: merchantIdServiceWallet.publicKey,
         state: stateAccount.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
+        systemProgram: SystemProgram.programId,
       })
-      .signers([user])
+      .signers([merchantIdServiceWallet])
       .rpc();
   }
 
-  it("Add review for Merchant with ReviewWallet", async () => {
+  it("Add review for Merchant with ReviewWallet and reward with EXP reviewer", async () => {
     const review = 4;
+
+    // Fetch the reviewer's initial EXP points
+    const reviewerInitialExp = (await program.account.user.fetch(userPda))
+      .expPoints;
 
     try {
       await program.methods
@@ -94,9 +142,10 @@ describe("Review Functionality Tests", () => {
         .accounts({
           merchant: merchantPda,
           state: stateAccount.publicKey,
-          signer: reviewWallet.publicKey,
+          signer: reviewServiceWallet.publicKey,
+          reviewer: userPda,
         })
-        .signers([reviewWallet])
+        .signers([reviewServiceWallet])
         .rpc();
     } catch (error) {
       console.error("Error when adding rating:", error);
@@ -106,6 +155,15 @@ describe("Review Functionality Tests", () => {
     // Fetch and verify the added rate
     const merchantAccount = await program.account.merchant.fetch(merchantPda);
     console.log(merchantAccount.ratings[0]);
+
+    const reviewerUpdatedExp = (await program.account.user.fetch(userPda))
+      .expPoints;
+
+    assert.equal(
+      reviewerUpdatedExp,
+      reviewerInitialExp + 20,
+      "Reviewer should have been awarded 20 EXP points"
+    );
   });
 
   it("Should reject adding a review with an invalid rating", async () => {
@@ -117,9 +175,10 @@ describe("Review Functionality Tests", () => {
         .accounts({
           merchant: merchantPda,
           state: stateAccount.publicKey,
-          signer: reviewWallet.publicKey,
+          signer: reviewServiceWallet.publicKey,
+          reviewer: userPda,
         })
-        .signers([reviewWallet])
+        .signers([reviewServiceWallet])
         .rpc();
       throw new Error("Test should have thrown an error for invalid rating");
     } catch (error) {
@@ -143,6 +202,7 @@ describe("Review Functionality Tests", () => {
           merchant: merchantPda,
           state: stateAccount.publicKey,
           signer: unauthorizedSigner.publicKey, // Using unauthorized signer
+          reviewer: userPda,
         })
         .signers([unauthorizedSigner])
         .rpc();
@@ -153,8 +213,8 @@ describe("Review Functionality Tests", () => {
       // Check if the error is the expected `Unauthorized` error
       assert.include(
         error.toString(),
-        "0x7",
-        "Expected an Unauthorized error (0x7)"
+        "0x8",
+        "Expected an Unauthorized error (0x8)"
       );
     }
   });

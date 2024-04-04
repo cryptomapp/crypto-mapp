@@ -1,4 +1,4 @@
-use crate::ErrorCode;
+use crate::{ErrorCode, User};
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::entrypoint::ProgramResult;
 
@@ -19,6 +19,10 @@ pub fn add_rating(ctx: Context<AddRating>, rating: u8) -> ProgramResult {
     let merchant_account = &mut ctx.accounts.merchant;
     merchant_account.ratings.push(rating);
 
+    // Award 20 EXP points to the reviewer
+    let reviewer_account = &mut ctx.accounts.reviewer;
+    reviewer_account.exp_points += 20;
+
     Ok(())
 }
 
@@ -30,4 +34,6 @@ pub struct AddRating<'info> {
     pub state: Account<'info, ProgramState>,
     #[account(mut)]
     pub signer: Signer<'info>,
+    #[account(mut)]
+    pub reviewer: Account<'info, User>,
 }

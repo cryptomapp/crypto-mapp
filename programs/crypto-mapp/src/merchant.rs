@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::entrypoint::ProgramResult;
 use std::mem;
 
-const MAX_REVIEWS: usize = 255;
+const MAX_REVIEWS: usize = 512;
 
 pub fn initialize_merchant(
     ctx: Context<InitializeMerchant>,

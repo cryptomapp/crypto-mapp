@@ -10,7 +10,7 @@ import {
   mintTo,
 } from "@solana/spl-token";
 
-describe.only("Transaction Tests", () => {
+describe("Transaction Tests", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
   const program = anchor.workspace.CryptoMapp as anchor.Program<CryptoMapp>;
