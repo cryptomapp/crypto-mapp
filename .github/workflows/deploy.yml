@@ -1,0 +1,38 @@
+name: Deploy Solana Contracts
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: |
+          curl -sSf https://sh.rustup.rs | sh -s -- -y
+          source $HOME/.cargo/env
+          curl -sSf https://sdk.solana.com/ | sh
+          source $HOME/.profile
+          cargo install --git https://github.com/coral-xyz/anchor --tag v0.29.0 anchor-cli --locked
+
+      - name: Run contract tests
+        run: |
+          source $HOME/.cargo/env
+          anchor test
+
+      - name: Deploy contracts
+        run: |
+          source $HOME/.cargo/env
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            solana config set --url mainnet
+          else
+            solana config set --url devnet
+          fi
+          anchor deploy
