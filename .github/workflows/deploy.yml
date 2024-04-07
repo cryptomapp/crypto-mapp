@@ -9,41 +9,37 @@ on:
 jobs:
   test-and-deploy:
     runs-on: ubuntu-latest
+    container: projectserum/build:v0.27.0
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - name: Cache cargo registry
-        uses: actions/cache@v2
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      - name: List rustup toolchains
+        run: rustup toolchain list
 
-      - name: Cache cargo index
-        uses: actions/cache@v2
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+      - name: Set default toolchain
+        run: rustup default stable
 
-      - name: Cache cargo build
-        uses: actions/cache@v2
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+      - name: List rustup toolchains
+        run: rustup toolchain list
 
-      - name: Install dependencies
-        run: |
-          curl -sSf https://sh.rustup.rs | sh -s -- -y
-          source $HOME/.cargo/env
-          curl -sSf https://sdk.solana.com/ | sh
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-          cargo install --git https://github.com/coral-xyz/anchor --tag v0.29.0 anchor-cli --locked
+      # - name: Generate new keygen
+      #   run: solana-keygen new
 
-      - name: Run contract tests
-        run: |
-          source $HOME/.cargo/env
-          anchor test
+      # - name: Set solana target cluster to local
+      #   run: solana config set --url http:localhost:8899
+
+      - name: Check solana config
+        run: solana config get
+
+      - name: Install yarn dependencies
+        run: yarn install
+
+      - name: Build
+        run: anchor build
+
+      - name: Run tests
+        run: anchor test
 
       - name: Deploy contracts
         run: |
