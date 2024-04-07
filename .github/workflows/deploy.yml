@@ -35,6 +35,9 @@ jobs:
       - name: Install yarn dependencies
         run: yarn install
 
+      - name: Update rust
+        run: rustup update
+
       - name: Build
         run: anchor build
 
