@@ -19,7 +19,7 @@ const provider = new anchor.AnchorProvider(
 );
 anchor.setProvider(provider);
 
-const program = anchor.workspace.CryptoMapp;
+const program = anchor.workspace.CryptomProtocol;
 
 async function main() {
   const programState = Keypair.generate();

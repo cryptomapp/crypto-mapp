@@ -11,7 +11,7 @@ use crate::user::*;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program_error::ProgramError;
 
-declare_id!("8mDhNcko1rByfWLzVTuddx386JFwFnD3oDPWV2pzBckN");
+declare_id!("6gVqqXEwoTX7AZTBYQDEaXntMiBPnTAyBbuMCeqk5avi");
 
 impl From<ErrorCode> for ProgramError {
     fn from(e: ErrorCode) -> ProgramError {
