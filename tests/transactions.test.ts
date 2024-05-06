@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
 import { Connection, Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
-import { CryptoMapp } from "../target/types/crypto_mapp";
+import { CryptomProtocol } from "../target/types/cryptom_protocol";
 import { fundAccount, calculatePDA, initializeState } from "./test_setup";
 import {
   TOKEN_PROGRAM_ID,
@@ -13,7 +13,8 @@ import {
 describe("Transaction Tests", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
-  const program = anchor.workspace.CryptoMapp as anchor.Program<CryptoMapp>;
+  const program = anchor.workspace
+    .CryptomProtocol as anchor.Program<CryptomProtocol>;
 
   let mintUSDC: PublicKey;
   let userTokenAccount: anchor.web3.PublicKey;

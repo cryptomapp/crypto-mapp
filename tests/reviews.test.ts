@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
-import { CryptoMapp } from "../target/types/crypto_mapp";
+import { CryptomProtocol } from "../target/types/cryptom_protocol";
 import { fundAccount, calculatePDA, initializeState } from "./test_setup";
 import { createMint } from "@solana/spl-token";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
@@ -8,7 +8,8 @@ import { PublicKey, SystemProgram } from "@solana/web3.js";
 describe("Review Functionality Tests", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
-  const program = anchor.workspace.CryptoMapp as anchor.Program<CryptoMapp>;
+  const program = anchor.workspace
+    .CryptomProtocol as anchor.Program<CryptomProtocol>;
 
   // Service wallets
   let stateAccount: anchor.web3.Keypair,

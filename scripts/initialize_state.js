@@ -29,27 +29,27 @@ async function main() {
     "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"
   );
   const daoPubkey = new PublicKey(
-    "HyZWBzi5EH9mm7FFhpAHQArm5JyY1KPeWgSxMN6YZdJy"
+    "EDEb9ucMFsBFb2mq3CN564vq1T7wRCaipq2NHhov299s"
   );
-  const usersWalletPubkey = new PublicKey(
-    "HyZWBzi5EH9mm7FFhpAHQArm5JyY1KPeWgSxMN6YZdJy"
+  const onboardingWalletPubkey = new PublicKey(
+    "4syDs7MTrCr6HCvX3vvW2LNHbdDY1Mk3MCxRCZupGgM2"
   );
-  const merchantsWalletPubkey = new PublicKey(
-    "HyZWBzi5EH9mm7FFhpAHQArm5JyY1KPeWgSxMN6YZdJy"
+  const merchantIdWalletPubkey = new PublicKey(
+    "DwiSCnPsqpZrLHcpRiQZRp9RCz3ruLH3DPxWjWgP5mq5"
   );
   const transactionsWalletPubkey = new PublicKey(
-    "HyZWBzi5EH9mm7FFhpAHQArm5JyY1KPeWgSxMN6YZdJy"
+    "HXFcg6GufXAXcT56oWPZanbw9dk3pCKStu8VzGzDFbwJ"
   );
   const reviewsWalletPubkey = new PublicKey(
-    "HyZWBzi5EH9mm7FFhpAHQArm5JyY1KPeWgSxMN6YZdJy"
+    "AzX2DksAq6mDR8hxaS5A4AZPC8KorHzqaDUcqzZF91rh"
   );
 
   await program.rpc.initialize(
     usdcMintPubkey,
     transactionFee,
     daoPubkey,
-    usersWalletPubkey,
-    merchantsWalletPubkey,
+    onboardingWalletPubkey,
+    merchantIdWalletPubkey,
     transactionsWalletPubkey,
     reviewsWalletPubkey,
     {

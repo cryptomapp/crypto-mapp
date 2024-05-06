@@ -1,12 +1,12 @@
 [package]
-name = "crypto-mapp"
-version = "0.1.0"
+name = "cryptom-protocol"
+version = "0.2.0"
 description = "Created with Anchor"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "crypto_mapp"
+name = "cryptom_protocol"
 
 [features]
 no-entrypoint = []
@@ -16,8 +16,8 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = "0.29.0"
-anchor-spl = "0.29.0"
+anchor-lang = "0.30.0"
+anchor-spl = "0.30.0"
 mpl-token-metadata = "4.0.0"
-solana-program = "=1.18.9"
-spl-associated-token-account = "2.3.1"
+solana-program = "=1.18.12"
+spl-associated-token-account = "3.0.2"

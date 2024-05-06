@@ -6,10 +6,10 @@ import {
   Connection,
   LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
-import { CryptoMapp } from "../target/types/crypto_mapp";
+import { CryptomProtocol } from "../target/types/cryptom_protocol";
 
 export async function initializeState(
-  program: Program<CryptoMapp>,
+  program: Program<CryptomProtocol>,
   stateAccount: Keypair,
   payer: Keypair,
   mintUSDC: PublicKey,

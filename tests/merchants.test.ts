@@ -1,12 +1,13 @@
 import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
-import { CryptoMapp } from "../target/types/crypto_mapp";
+import { CryptomProtocol } from "../target/types/cryptom_protocol";
 import { fundAccount, calculatePDA, initializeState } from "./test_setup";
 
 describe("Merchant Functionality Tests", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
-  const program = anchor.workspace.CryptoMapp as anchor.Program<CryptoMapp>;
+  const program = anchor.workspace
+    .CryptomProtocol as anchor.Program<CryptomProtocol>;
 
   const nftIdentifier = {
     merkle_tree_address: new anchor.web3.PublicKey(

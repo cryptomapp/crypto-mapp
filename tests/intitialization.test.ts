@@ -1,13 +1,13 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-import { CryptoMapp } from "../target/types/crypto_mapp";
+import { CryptomProtocol } from "../target/types/cryptom_protocol";
 import { assert } from "chai";
 import { Keypair } from "@solana/web3.js";
 
 describe("Program Initialization Tests", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
   const provider = anchor.AnchorProvider.local();
-  const program = anchor.workspace.CryptoMapp as Program<CryptoMapp>;
+  const program = anchor.workspace.CryptomProtocol as Program<CryptomProtocol>;
 
   // Generate a new keypair for testing and use its public key
   const testUSDCMintKeypair = Keypair.generate();

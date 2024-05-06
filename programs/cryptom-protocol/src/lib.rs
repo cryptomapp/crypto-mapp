@@ -20,7 +20,7 @@ impl From<ErrorCode> for ProgramError {
 }
 
 #[program]
-pub mod crypto_mapp {
+pub mod cryptom_protocol {
 
     use super::*;
     use anchor_lang::solana_program::entrypoint::ProgramResult;
